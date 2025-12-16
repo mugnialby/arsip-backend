@@ -12,7 +12,6 @@ type ArchiveHdr struct {
 	ArchiveCharacteristicID uint           `gorm:"column:archive_characteristic_id" json:"archiveCharacteristicId"`
 	ArchiveTypeID           uint           `gorm:"column:archive_type_id" json:"archiveTypeId"`
 	ArchiveDate             utils.DateOnly `gorm:"type:date column:archive_date" json:"archiveDate"`
-	DepartmentID            uint           `gorm:"column:department_id" json:"departmentId"`
 	Status                  string         `gorm:"column:status;type:varchar(1);default:'Y'" json:"status"`
 	CreatedBy               string         `gorm:"column:created_by;type:varchar(128);not null" json:"createdBy"`
 	CreatedAt               time.Time      `gorm:"column:created_at;autoCreateTime" json:"createdAt"`
@@ -22,7 +21,6 @@ type ArchiveHdr struct {
 	// Read-only relations
 	ArchiveCharacteristic *ArchiveCharacteristic `gorm:"foreignKey:ArchiveCharacteristicID;->" json:"archiveCharacteristic"`
 	ArchiveType           *ArchiveType           `gorm:"foreignKey:ArchiveTypeID;->" json:"archiveType"`
-	Department            *Department            `gorm:"foreignKey:DepartmentID;->" json:"department"`
 
 	ArchiveAttachments []*ArchiveAttachment `gorm:"foreignKey:ArchiveHdrID;->" json:"archiveAttachments"`
 }

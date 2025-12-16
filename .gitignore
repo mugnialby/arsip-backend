@@ -1,0 +1,55 @@
+# ==================================================
+# Go + Gin + PostgreSQL Backend .gitignore
+# ==================================================
+
+# --- Build and binary outputs ---
+/bin/
+/build/
+/dist/
+/out/
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+
+# --- Go module cache (keep go.mod & go.sum!) ---
+/vendor/
+
+# --- Logs and temporary files ---
+*.log
+*.tmp
+*.cache
+*.bak
+*.swp
+*.swo
+
+# --- Environment and configuration files ---
+.env
+.env.*
+!.env.example    # keep a template for documentation
+
+# --- IDE / Editor specific files ---
+.vscode/
+.idea/
+*.iml
+
+# --- OS generated files ---
+.DS_Store
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# --- Docker related ---
+/docker-compose.override.yml
+/.docker/
+*.pid
+
+# --- Test / Coverage ---
+/coverage.out
+/test-results/
+
+# --- Misc ---
+node_modules/

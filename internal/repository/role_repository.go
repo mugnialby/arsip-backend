@@ -1,0 +1,55 @@
+package repository
+
+import (
+	"github.com/mugnialby/perpustakaan-kejari-kota-bogor-backend/internal/model"
+	"gorm.io/gorm"
+)
+
+type RoleRepository interface {
+	FindAll() ([]model.Role, error)
+	FindByID(id uint) (*model.Role, error)
+	Create(book *model.Role) error
+	Update(book *model.Role) error
+	GetRoleByDepartmentID(departmentId uint) ([]model.Role, error)
+}
+
+type roleRepository struct {
+	db *gorm.DB
+}
+
+func NewRoleRepository(db *gorm.DB) RoleRepository {
+	return &roleRepository{db: db}
+}
+
+func (r *roleRepository) FindAll() ([]model.Role, error) {
+	var roles []model.Role
+	err := r.db.Where("status = ?", "Y").
+		Preload("Department", "status = ?", "Y").
+		Order("role_name asc").
+		Find(&roles).Error
+	return roles, err
+}
+
+func (r *roleRepository) FindByID(id uint) (*model.Role, error) {
+	var role model.Role
+	err := r.db.First(&role, id).Error
+	return &role, err
+}
+
+func (r *roleRepository) Create(role *model.Role) error {
+	return r.db.Create(role).Error
+}
+
+func (r *roleRepository) Update(role *model.Role) error {
+	return r.db.Save(role).Error
+}
+
+func (r *roleRepository) GetRoleByDepartmentID(departmentId uint) ([]model.Role, error) {
+	var roles []model.Role
+	err := r.db.Where("status = ?", "Y").
+		Where("department_id = ?", departmentId).
+		Order("department_id asc").
+		Order("role_name asc").
+		Find(&roles).Error
+	return roles, err
+}

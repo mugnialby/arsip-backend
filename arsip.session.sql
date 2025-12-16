@@ -59,7 +59,6 @@ CREATE TABLE archive_hdr (
     archive_characteristic_id INT,
     archive_type_id INT,
     archive_date DATE,
-    department_id INT,
     status VARCHAR(1) DEFAULT 'Y' NOT NULL,
     created_by VARCHAR(128) NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,

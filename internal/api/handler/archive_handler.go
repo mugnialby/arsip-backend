@@ -12,7 +12,6 @@ import (
 	"runtime"
 	"strconv"
 	"strings"
-	"syscall"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -20,6 +19,7 @@ import (
 	archiveRequest "github.com/mugnialby/arsip-backend/internal/model/dto/request/archive"
 	archiveRoleAccessRequest "github.com/mugnialby/arsip-backend/internal/model/dto/request/archiveRoleAccess"
 	"github.com/mugnialby/arsip-backend/internal/service"
+	"github.com/mugnialby/arsip-backend/internal/utils"
 	"github.com/mugnialby/arsip-backend/pkg/response"
 )
 
@@ -619,10 +619,7 @@ func convertImagesToPDF(imageFiles []string, outputPDF string) error {
 	args := append(imageFiles, outputPDF)
 	cmd := exec.Command(getImageMagickCmd(), args...)
 
-	// Windows safety
-	if runtime.GOOS == "windows" {
-		cmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true}
-	}
+	utils.ApplySysProcAttr(cmd)
 
 	out, err := cmd.CombinedOutput()
 	if err != nil {
@@ -641,9 +638,7 @@ func mergePDFs(inputs []string, output string) error {
 	var cmd *exec.Cmd
 	if runtime.GOOS == "windows" {
 		cmd = exec.Command(getPDFUnitePath(), args...)
-		cmd.SysProcAttr = &syscall.SysProcAttr{
-			HideWindow: true,
-		}
+		utils.ApplySysProcAttr(cmd)
 	} else {
 		cmd = exec.Command("pdfunite", args...)
 	}

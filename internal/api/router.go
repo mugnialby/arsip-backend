@@ -6,9 +6,9 @@ import (
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
-	"github.com/mugnialby/perpustakaan-kejari-kota-bogor-backend/internal/api/handler"
-	"github.com/mugnialby/perpustakaan-kejari-kota-bogor-backend/internal/config"
-	"github.com/mugnialby/perpustakaan-kejari-kota-bogor-backend/internal/service"
+	"github.com/mugnialby/arsip-backend/internal/api/handler"
+	"github.com/mugnialby/arsip-backend/internal/config"
+	"github.com/mugnialby/arsip-backend/internal/service"
 )
 
 func NewRouter(

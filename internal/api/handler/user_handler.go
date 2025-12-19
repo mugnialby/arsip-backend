@@ -6,10 +6,10 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/mugnialby/perpustakaan-kejari-kota-bogor-backend/internal/model"
-	request "github.com/mugnialby/perpustakaan-kejari-kota-bogor-backend/internal/model/dto/request/users"
-	"github.com/mugnialby/perpustakaan-kejari-kota-bogor-backend/internal/service"
-	"github.com/mugnialby/perpustakaan-kejari-kota-bogor-backend/pkg/response"
+	"github.com/mugnialby/arsip-backend/internal/model"
+	request "github.com/mugnialby/arsip-backend/internal/model/dto/request/users"
+	"github.com/mugnialby/arsip-backend/internal/service"
+	"github.com/mugnialby/arsip-backend/pkg/response"
 )
 
 type UserHandler struct {

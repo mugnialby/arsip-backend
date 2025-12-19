@@ -3,12 +3,12 @@ package main
 import (
 	"log"
 
-	"github.com/mugnialby/perpustakaan-kejari-kota-bogor-backend/internal/api"
-	"github.com/mugnialby/perpustakaan-kejari-kota-bogor-backend/internal/appcontext"
-	"github.com/mugnialby/perpustakaan-kejari-kota-bogor-backend/internal/config"
-	"github.com/mugnialby/perpustakaan-kejari-kota-bogor-backend/internal/repository"
-	"github.com/mugnialby/perpustakaan-kejari-kota-bogor-backend/internal/service"
-	"github.com/mugnialby/perpustakaan-kejari-kota-bogor-backend/pkg/logger"
+	"github.com/mugnialby/arsip-backend/internal/api"
+	"github.com/mugnialby/arsip-backend/internal/appcontext"
+	"github.com/mugnialby/arsip-backend/internal/config"
+	"github.com/mugnialby/arsip-backend/internal/repository"
+	"github.com/mugnialby/arsip-backend/internal/service"
+	"github.com/mugnialby/arsip-backend/pkg/logger"
 )
 
 func main() {

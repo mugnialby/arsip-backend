@@ -3,7 +3,7 @@ package model
 import (
 	"time"
 
-	"github.com/mugnialby/perpustakaan-kejari-kota-bogor-backend/internal/utils"
+	"github.com/mugnialby/arsip-backend/internal/utils"
 )
 
 type ArchiveHdr struct {

@@ -1,9 +1,9 @@
 package request
 
 import (
-	attachmentRequest "github.com/mugnialby/perpustakaan-kejari-kota-bogor-backend/internal/model/dto/request/archiveAttachment"
-	roleAccessRequest "github.com/mugnialby/perpustakaan-kejari-kota-bogor-backend/internal/model/dto/request/archiveRoleAccess"
-	"github.com/mugnialby/perpustakaan-kejari-kota-bogor-backend/internal/utils"
+	attachmentRequest "github.com/mugnialby/arsip-backend/internal/model/dto/request/archiveAttachment"
+	roleAccessRequest "github.com/mugnialby/arsip-backend/internal/model/dto/request/archiveRoleAccess"
+	"github.com/mugnialby/arsip-backend/internal/utils"
 )
 
 type UpdateArchiveRequest struct {

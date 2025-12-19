@@ -4,7 +4,7 @@ import (
 	"errors"
 	"time"
 
-	"github.com/mugnialby/perpustakaan-kejari-kota-bogor-backend/internal/model"
+	"github.com/mugnialby/arsip-backend/internal/model"
 	"gorm.io/gorm"
 )
 

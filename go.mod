@@ -1,4 +1,4 @@
-module github.com/mugnialby/perpustakaan-kejari-kota-bogor-backend
+module github.com/mugnialby/arsip-backend
 
 go 1.25.3
 

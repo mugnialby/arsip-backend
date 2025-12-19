@@ -1,10 +1,10 @@
 package service
 
 import (
-	"github.com/mugnialby/perpustakaan-kejari-kota-bogor-backend/internal/model"
-	authRequest "github.com/mugnialby/perpustakaan-kejari-kota-bogor-backend/internal/model/dto/request/auth"
-	usersRequest "github.com/mugnialby/perpustakaan-kejari-kota-bogor-backend/internal/model/dto/request/users"
-	"github.com/mugnialby/perpustakaan-kejari-kota-bogor-backend/internal/repository"
+	"github.com/mugnialby/arsip-backend/internal/model"
+	authRequest "github.com/mugnialby/arsip-backend/internal/model/dto/request/auth"
+	usersRequest "github.com/mugnialby/arsip-backend/internal/model/dto/request/users"
+	"github.com/mugnialby/arsip-backend/internal/repository"
 )
 
 type UserService struct {

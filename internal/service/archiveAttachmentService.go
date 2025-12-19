@@ -1,8 +1,8 @@
 package service
 
 import (
-	"github.com/mugnialby/perpustakaan-kejari-kota-bogor-backend/internal/model"
-	"github.com/mugnialby/perpustakaan-kejari-kota-bogor-backend/internal/repository"
+	"github.com/mugnialby/arsip-backend/internal/model"
+	"github.com/mugnialby/arsip-backend/internal/repository"
 )
 
 type ArchiveAttachmentService struct {

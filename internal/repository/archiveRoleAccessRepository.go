@@ -4,8 +4,8 @@ import (
 	"errors"
 	"time"
 
-	"github.com/mugnialby/perpustakaan-kejari-kota-bogor-backend/internal/model"
-	request "github.com/mugnialby/perpustakaan-kejari-kota-bogor-backend/internal/model/dto/request/archiveRoleAccess"
+	"github.com/mugnialby/arsip-backend/internal/model"
+	request "github.com/mugnialby/arsip-backend/internal/model/dto/request/archiveRoleAccess"
 	"gorm.io/gorm"
 )
 

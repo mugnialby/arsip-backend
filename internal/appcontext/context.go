@@ -3,7 +3,7 @@ package appcontext
 import (
 	"fmt"
 
-	"github.com/mugnialby/perpustakaan-kejari-kota-bogor-backend/internal/config"
+	"github.com/mugnialby/arsip-backend/internal/config"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 )

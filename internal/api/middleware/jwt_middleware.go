@@ -5,8 +5,8 @@ import (
 	"strings"
 
 	"github.com/gin-gonic/gin"
-	"github.com/mugnialby/perpustakaan-kejari-kota-bogor-backend/internal/utils"
-	"github.com/mugnialby/perpustakaan-kejari-kota-bogor-backend/pkg/response"
+	"github.com/mugnialby/arsip-backend/internal/utils"
+	"github.com/mugnialby/arsip-backend/pkg/response"
 )
 
 func JWTAuth(jwtService *utils.JWTService) gin.HandlerFunc {

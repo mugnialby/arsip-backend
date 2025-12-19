@@ -4,9 +4,9 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
-	request "github.com/mugnialby/perpustakaan-kejari-kota-bogor-backend/internal/model/dto/request/auth"
-	"github.com/mugnialby/perpustakaan-kejari-kota-bogor-backend/internal/service"
-	"github.com/mugnialby/perpustakaan-kejari-kota-bogor-backend/pkg/response"
+	request "github.com/mugnialby/arsip-backend/internal/model/dto/request/auth"
+	"github.com/mugnialby/arsip-backend/internal/service"
+	"github.com/mugnialby/arsip-backend/pkg/response"
 )
 
 type AuthHandler struct {

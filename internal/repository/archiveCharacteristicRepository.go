@@ -1,7 +1,11 @@
 package repository
 
 import (
+	"errors"
+	"time"
+
 	"github.com/mugnialby/perpustakaan-kejari-kota-bogor-backend/internal/model"
+	request "github.com/mugnialby/perpustakaan-kejari-kota-bogor-backend/internal/model/dto/request/archiveCharacteristic"
 	"gorm.io/gorm"
 )
 
@@ -10,6 +14,7 @@ type ArchiveCharacteristicRepository interface {
 	FindByID(id uint) (*model.ArchiveCharacteristic, error)
 	Create(archiveCharacteristic *model.ArchiveCharacteristic) error
 	Update(archiveCharacteristic *model.ArchiveCharacteristic) error
+	Delete(deleteUserRequest *request.DeleteArchiveCharacteristicRequest) error
 }
 
 type archiveCharacteristicRepository struct {
@@ -40,4 +45,24 @@ func (r *archiveCharacteristicRepository) Create(archiveCharacteristic *model.Ar
 
 func (r *archiveCharacteristicRepository) Update(archiveCharacteristic *model.ArchiveCharacteristic) error {
 	return r.db.Save(archiveCharacteristic).Error
+}
+
+func (r *archiveCharacteristicRepository) Delete(deleteArchiveCharacteristicRequest *request.DeleteArchiveCharacteristicRequest) error {
+	result := r.db.Model(&model.ArchiveCharacteristic{}).
+		Where("id = ?", deleteArchiveCharacteristicRequest.ID).
+		Updates(map[string]interface{}{
+			"status":      "N",
+			"modified_by": deleteArchiveCharacteristicRequest.SubmittedBy,
+			"modified_at": time.Now(),
+		})
+
+	if result.Error != nil {
+		return result.Error
+	}
+
+	if result.RowsAffected == 0 {
+		return errors.New("no data found to delete")
+	}
+
+	return nil
 }

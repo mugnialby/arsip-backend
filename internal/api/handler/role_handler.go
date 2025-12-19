@@ -3,6 +3,7 @@ package handler
 import (
 	"net/http"
 	"strconv"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/mugnialby/perpustakaan-kejari-kota-bogor-backend/internal/model"
@@ -64,13 +65,6 @@ func (h *RoleHandler) CreateRole(c *gin.Context) {
 }
 
 func (h *RoleHandler) UpdateRoleById(c *gin.Context) {
-	id, _ := strconv.Atoi(c.Param("id"))
-	role, err := h.service.GetRoleByID(uint(id))
-	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "role not found"})
-		return
-	}
-
 	var updateRoleRequest request.UpdateRoleRequest
 	if err := c.ShouldBind(&updateRoleRequest); err != nil {
 		// tambah logger di sini
@@ -78,9 +72,18 @@ func (h *RoleHandler) UpdateRoleById(c *gin.Context) {
 		return
 	}
 
+	role, err := h.service.GetRoleByID(updateRoleRequest.ID)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "data not found"})
+		return
+	}
+
+	timeNow := time.Now()
+
 	role.RoleName = updateRoleRequest.RoleName
 	role.DepartmentID = updateRoleRequest.DepartmentID
-	// role.ModifiedBy = &updateRoleRequest.UserID
+	role.ModifiedBy = &updateRoleRequest.SubmittedBy
+	role.ModifiedAt = &timeNow
 	if err := h.service.UpdateRole(role); err != nil {
 		// tambah logger di sini
 		response.Error(c, http.StatusInternalServerError, "API Fail")
@@ -91,21 +94,20 @@ func (h *RoleHandler) UpdateRoleById(c *gin.Context) {
 }
 
 func (h *RoleHandler) DeleteRoleById(c *gin.Context) {
-	id, _ := strconv.Atoi(c.Param("id"))
-	role, err := h.service.GetRoleByID(uint(id))
-	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "role not found"})
+	var deleteRoleRequest request.DeleteRoleRequest
+	if err := c.ShouldBindJSON(&deleteRoleRequest); err != nil {
+		// tambah logger di sini
+		response.Error(c, http.StatusBadRequest, "JSON Request is not valid")
 		return
 	}
 
-	role.Status = "N"
-	if err := h.service.UpdateRole(role); err != nil {
+	if err := h.service.DeleteRole(&deleteRoleRequest); err != nil {
 		// tambah logger di sini
 		response.Error(c, http.StatusInternalServerError, "API Fail")
 		return
 	}
 
-	c.JSON(http.StatusOK, role)
+	c.Status(http.StatusOK)
 }
 
 func (h *RoleHandler) GetRoleByDepartmentID(c *gin.Context) {

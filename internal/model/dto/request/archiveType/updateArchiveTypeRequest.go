@@ -1,6 +1,7 @@
 package request
 
 type UpdateArchiveTypeRequest struct {
+	ID              uint   `json:"id"`
 	ArchiveTypeName string `json:"archiveTypeName" binding:"required"`
-	ModifiedBy      string `json:"modifiedBy"`
+	SubmittedBy     string `json:"submittedBy"`
 }

@@ -2,7 +2,8 @@ package service
 
 import (
 	"github.com/mugnialby/perpustakaan-kejari-kota-bogor-backend/internal/model"
-	request "github.com/mugnialby/perpustakaan-kejari-kota-bogor-backend/internal/model/dto/request/auth"
+	authRequest "github.com/mugnialby/perpustakaan-kejari-kota-bogor-backend/internal/model/dto/request/auth"
+	usersRequest "github.com/mugnialby/perpustakaan-kejari-kota-bogor-backend/internal/model/dto/request/users"
 	"github.com/mugnialby/perpustakaan-kejari-kota-bogor-backend/internal/repository"
 )
 
@@ -30,6 +31,10 @@ func (s *UserService) UpdateUser(user *model.User) error {
 	return s.repo.Update(user)
 }
 
-func (s *UserService) CheckUserLoginRequest(loginRequest *request.LoginRequest) (*model.User, error) {
+func (s *UserService) DeleteUser(deleteUserRequest *usersRequest.DeleteUserRequest) error {
+	return s.repo.Delete(deleteUserRequest)
+}
+
+func (s *UserService) CheckUserLoginRequest(loginRequest *authRequest.LoginRequest) (*model.User, error) {
 	return s.repo.FindUserForLoginRequest(loginRequest)
 }

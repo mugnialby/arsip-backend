@@ -13,9 +13,9 @@ type User struct {
 	CreatedBy    string     `gorm:"column:created_by;type:varchar(128);not null" json:"createdBy"`
 	CreatedAt    time.Time  `gorm:"column:created_at;autoCreateTime" json:"createdAt"`
 	ModifiedBy   *string    `gorm:"column:modified_by;type:varchar(128)" json:"modifiedBy,omitempty"`
-	ModifiedAt   *time.Time `gorm:"column:modified_at;autoUpdateTime" json:"modifiedAt,omitempty"`
+	ModifiedAt   *time.Time `gorm:"column:modified_at;" json:"modifiedAt,omitempty"`
 
 	// Relationships
-	Department Department `gorm:"foreignKey:DepartmentID;constraint:OnUpdate:CASCADE,OnDelete:SET NULL;" json:"department"`
-	Role       Role       `gorm:"foreignKey:RoleID;constraint:OnUpdate:CASCADE,OnDelete:SET NULL;" json:"role"`
+	Department *Department `gorm:"foreignKey:DepartmentID;->" json:"department"`
+	Role       *Role       `gorm:"foreignKey:RoleID;->" json:"role"`
 }

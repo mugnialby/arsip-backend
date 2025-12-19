@@ -17,7 +17,8 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/mugnialby/perpustakaan-kejari-kota-bogor-backend/internal/model"
-	request "github.com/mugnialby/perpustakaan-kejari-kota-bogor-backend/internal/model/dto/request/archive"
+	archiveRequest "github.com/mugnialby/perpustakaan-kejari-kota-bogor-backend/internal/model/dto/request/archive"
+	archiveRoleAccessRequest "github.com/mugnialby/perpustakaan-kejari-kota-bogor-backend/internal/model/dto/request/archiveRoleAccess"
 	"github.com/mugnialby/perpustakaan-kejari-kota-bogor-backend/internal/service"
 	"github.com/mugnialby/perpustakaan-kejari-kota-bogor-backend/pkg/response"
 )
@@ -25,6 +26,7 @@ import (
 type ArchiveHandler struct {
 	archiveService           *service.ArchiveService
 	archiveAttachmentService *service.ArchiveAttachmentService
+	archiveRoleAccessService *service.ArchiveRoleAccessService
 }
 
 var CacheTTL = 5 * time.Minute
@@ -37,15 +39,32 @@ type CacheItem struct {
 func NewArchiveHandler(
 	archiveService *service.ArchiveService,
 	archiveAttachmentService *service.ArchiveAttachmentService,
+	archiveRoleAccessService *service.ArchiveRoleAccessService,
 ) *ArchiveHandler {
 	return &ArchiveHandler{
 		archiveService:           archiveService,
 		archiveAttachmentService: archiveAttachmentService,
+		archiveRoleAccessService: archiveRoleAccessService,
 	}
 }
 
 func (h *ArchiveHandler) GetAllArchives(c *gin.Context) {
 	archives, err := h.archiveService.GetAllArchives()
+	if err != nil {
+		response.Error(c, http.StatusInternalServerError, err.Error())
+		return
+	}
+	response.Success(c, archives)
+}
+
+func (h *ArchiveHandler) GetAllArchivesByData(c *gin.Context) {
+	var getArchiveByDataRequest archiveRequest.GetArchiveByDataRequest
+	if err := c.ShouldBindJSON(&getArchiveByDataRequest); err != nil {
+		response.Error(c, http.StatusBadRequest, "Form data is not valid")
+		return
+	}
+
+	archives, err := h.archiveService.GetAllArchivesByData(getArchiveByDataRequest)
 	if err != nil {
 		response.Error(c, http.StatusInternalServerError, err.Error())
 		return
@@ -95,25 +114,41 @@ func (h *ArchiveHandler) GetArchiveByID(c *gin.Context) {
 }
 
 func (h *ArchiveHandler) CreateArchive(c *gin.Context) {
-	var newArchiveRequest request.NewArchiveRequest
+	var newArchiveRequest archiveRequest.NewArchiveRequest
 	if err := c.ShouldBindJSON(&newArchiveRequest); err != nil {
 		response.Error(c, http.StatusBadRequest, "Form data is not valid")
 		return
 	}
 
-	// 1️⃣ Insert main book record
 	newArchive := model.ArchiveHdr{
+		ArchiveDate:             newArchiveRequest.ArchiveDate,
+		ArchiveNumber:           newArchiveRequest.ArchiveNumber,
 		ArchiveName:             newArchiveRequest.ArchiveName,
 		ArchiveCharacteristicID: newArchiveRequest.ArchiveCharacteristicID,
 		ArchiveTypeID:           newArchiveRequest.ArchiveTypeID,
-		ArchiveDate:             newArchiveRequest.ArchiveDate,
+		DepartmentID:            newArchiveRequest.DepartmentID,
 		Status:                  "Y",
-		CreatedBy:               newArchiveRequest.UserId,
+		CreatedBy:               newArchiveRequest.SubmittedBy,
 	}
 
 	if err := h.archiveService.CreateArchive(&newArchive); err != nil {
 		response.Error(c, http.StatusInternalServerError, "Failed to create archive hdr")
 		return
+	}
+
+	for _, roleAccess := range newArchiveRequest.RoleAccess {
+		newArchiveRoleAccess := model.ArchiveRoleAccess{
+			ArchiveHdrID: newArchive.ID,
+			RoleID:       roleAccess.RoleID,
+			DepartmentID: roleAccess.DepartmentID,
+			Status:       "Y",
+			CreatedBy:    newArchiveRequest.SubmittedBy,
+		}
+
+		if err := h.archiveRoleAccessService.CreateArchiveRoleAccess(&newArchiveRoleAccess); err != nil {
+			response.Error(c, http.StatusInternalServerError, "Failed to save archive RoleAccess")
+			return
+		}
 	}
 
 	for _, archiveAttachment := range newArchiveRequest.ListArchiveAttachments {
@@ -158,7 +193,7 @@ func (h *ArchiveHandler) CreateArchive(c *gin.Context) {
 				FileName:     fileName,
 				FileLocation: fileLocation,
 				Status:       "Y",
-				CreatedBy:    newArchiveRequest.UserId,
+				CreatedBy:    newArchiveRequest.SubmittedBy,
 			}
 
 			if err := h.archiveAttachmentService.CreateArchiveAttachment(&newArchiveAttachment); err != nil {
@@ -172,29 +207,65 @@ func (h *ArchiveHandler) CreateArchive(c *gin.Context) {
 }
 
 func (h *ArchiveHandler) UpdateArchiveById(c *gin.Context) {
-	id, _ := strconv.Atoi(c.Param("id"))
-	archive, err := h.archiveService.GetArchiveByID(uint(id))
-	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Archive not found"})
-		return
-	}
-
-	var updateArchiveRequest request.UpdateArchiveRequest
-	if err := c.ShouldBindJSON(&updateArchiveRequest); err != nil {
+	var updateArchiveRequest archiveRequest.UpdateArchiveRequest
+	if err := c.ShouldBind(&updateArchiveRequest); err != nil {
 		// tambah logger di sini
 		response.Error(c, http.StatusBadRequest, "JSON Request is not valid")
 		return
 	}
 
+	archive, err := h.archiveService.GetArchiveByID(updateArchiveRequest.ID)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "data not found"})
+		return
+	}
+
+	timeNow := time.Now()
+
+	archive.ArchiveDate = updateArchiveRequest.ArchiveDate
+	archive.ArchiveNumber = updateArchiveRequest.ArchiveNumber
 	archive.ArchiveName = updateArchiveRequest.ArchiveName
 	archive.ArchiveCharacteristicID = updateArchiveRequest.ArchiveCharacteristicID
 	archive.ArchiveTypeID = updateArchiveRequest.ArchiveTypeID
-	archive.ArchiveDate = updateArchiveRequest.ArchiveDate
-	archive.ModifiedBy = &updateArchiveRequest.UserId
+	archive.ModifiedBy = &updateArchiveRequest.SubmittedBy
+	archive.ModifiedAt = &timeNow
+
 	if err := h.archiveService.UpdateArchive(archive); err != nil {
 		// tambah logger di sini
 		response.Error(c, http.StatusInternalServerError, "API Fail")
 		return
+	}
+
+	for _, roleAccess := range updateArchiveRequest.RoleAccess {
+		if roleAccess.IsNew {
+			newArchiveRoleAccess := model.ArchiveRoleAccess{
+				ArchiveHdrID: updateArchiveRequest.ID,
+				RoleID:       roleAccess.RoleID,
+				DepartmentID: roleAccess.DepartmentID,
+				Status:       "Y",
+				CreatedBy:    updateArchiveRequest.SubmittedBy,
+			}
+
+			if err := h.archiveRoleAccessService.CreateArchiveRoleAccess(&newArchiveRoleAccess); err != nil {
+				response.Error(c, http.StatusInternalServerError, "Failed to save archive RoleAccess")
+				return
+			}
+		}
+
+		if roleAccess.IsDelete {
+			deleteArchiveRoleAccess := archiveRoleAccessRequest.DeleteArchiveRoleAccessRequest{
+				ID:          roleAccess.ID,
+				SubmittedBy: updateArchiveRequest.SubmittedBy,
+			}
+
+			if err := h.archiveRoleAccessService.DeleteArchiveRoleAccess(&deleteArchiveRoleAccess); err != nil {
+				// tambah logger di sini
+				response.Error(c, http.StatusInternalServerError, "API Fail")
+				return
+			}
+
+			c.Status(http.StatusOK)
+		}
 	}
 
 	for _, archiveAttachment := range updateArchiveRequest.ListArchiveAttachments {
@@ -225,8 +296,8 @@ func (h *ArchiveHandler) UpdateArchiveById(c *gin.Context) {
 				return
 			}
 
-			uploadDir := createUploadDirectory(uint(id))
-			fileName := fmt.Sprintf("%d_%d.%s", id, time.Now().UnixNano(), fileExt)
+			uploadDir := createUploadDirectory(updateArchiveRequest.ID)
+			fileName := fmt.Sprintf("%d_%d.%s", updateArchiveRequest.ID, time.Now().UnixNano(), fileExt)
 			fileLocation := filepath.Join(uploadDir, fileName)
 
 			if err := os.WriteFile(fileLocation, decodedBytes, 0644); err != nil {
@@ -235,11 +306,11 @@ func (h *ArchiveHandler) UpdateArchiveById(c *gin.Context) {
 			}
 
 			newArchiveAttachment := model.ArchiveAttachment{
-				ArchiveHdrID: uint(id),
+				ArchiveHdrID: updateArchiveRequest.ID,
 				FileName:     fileName,
 				FileLocation: fileLocation,
 				Status:       "Y",
-				CreatedBy:    updateArchiveRequest.UserId,
+				CreatedBy:    updateArchiveRequest.SubmittedBy,
 			}
 
 			if err := h.archiveAttachmentService.CreateArchiveAttachment(&newArchiveAttachment); err != nil {
@@ -247,8 +318,9 @@ func (h *ArchiveHandler) UpdateArchiveById(c *gin.Context) {
 				return
 			}
 
+			projectRoot := getProjectRoot()
 			cacheFolder := "storage/cache"
-			cacheFilePath := filepath.Join(cacheFolder, fmt.Sprintf("archive_%d.pdf", id))
+			cacheFilePath := filepath.Join(projectRoot, cacheFolder, fmt.Sprintf("archive_%d.pdf", updateArchiveRequest.ID))
 
 			if err := os.Remove(cacheFilePath); err == nil {
 				log.Println("Cache deleted:", cacheFilePath)
@@ -276,8 +348,9 @@ func (h *ArchiveHandler) UpdateArchiveById(c *gin.Context) {
 
 			c.JSON(http.StatusOK, archiveAttachment)
 
+			projectRoot := getProjectRoot()
 			cacheFolder := "storage/cache"
-			cacheFilePath := filepath.Join(cacheFolder, fmt.Sprintf("archive_%d.pdf", id))
+			cacheFilePath := filepath.Join(projectRoot, cacheFolder, fmt.Sprintf("archive_%d.pdf", updateArchiveRequest.ID))
 
 			if err := os.Remove(cacheFilePath); err == nil {
 				log.Println("Cache deleted:", cacheFilePath)
@@ -293,27 +366,32 @@ func (h *ArchiveHandler) UpdateArchiveById(c *gin.Context) {
 }
 
 func (h *ArchiveHandler) DeleteArchiveById(c *gin.Context) {
-	id, _ := strconv.Atoi(c.Param("id"))
-	archive, err := h.archiveService.GetArchiveByID(uint(id))
-	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Archive not found"})
+	var deleteArchiveRequest archiveRequest.DeleteArchiveRequest
+	if err := c.ShouldBindJSON(&deleteArchiveRequest); err != nil {
+		// tambah logger di sini
+		response.Error(c, http.StatusBadRequest, "JSON Request is not valid")
 		return
 	}
 
-	archive.Status = "N"
-	if err := h.archiveService.UpdateArchive(archive); err != nil {
+	if err := h.archiveService.DeleteArchive(&deleteArchiveRequest); err != nil {
 		// tambah logger di sini
 		response.Error(c, http.StatusInternalServerError, "API Fail")
 		return
 	}
 
-	if err := h.archiveAttachmentService.DeleteArchiveAttachmentByArchiveID(uint(id)); err != nil {
+	if err := h.archiveAttachmentService.DeleteArchiveAttachmentByArchiveID(deleteArchiveRequest.ID, deleteArchiveRequest.SubmittedBy); err != nil {
 		// tambah logger di sini
 		response.Error(c, http.StatusInternalServerError, "API Fail")
 		return
 	}
 
-	c.JSON(http.StatusOK, archive)
+	if err := h.archiveRoleAccessService.DeleteArchiveRoleAccessByArchiveID(deleteArchiveRequest.ID, deleteArchiveRequest.SubmittedBy); err != nil {
+		// tambah logger di sini
+		response.Error(c, http.StatusInternalServerError, "API Fail")
+		return
+	}
+
+	c.Status(http.StatusOK)
 }
 
 func (h *ArchiveHandler) FindArchiveByQuery(c *gin.Context) {
@@ -328,7 +406,7 @@ func (h *ArchiveHandler) FindArchiveByQuery(c *gin.Context) {
 }
 
 func (h *ArchiveHandler) FindArchiveByAdvanceQuery(c *gin.Context) {
-	var advancedSearchRequest request.AdvancedSearchRequest
+	var advancedSearchRequest archiveRequest.AdvancedSearchRequest
 	if err := c.ShouldBindJSON(&advancedSearchRequest); err != nil {
 		response.Error(c, http.StatusBadRequest, "JSON is not valid")
 		return
@@ -357,7 +435,8 @@ func (h *ArchiveHandler) StreamMergedPDF(c *gin.Context) {
 		return
 	}
 
-	cacheDir := filepath.Join("storage", "cache")
+	projectRoot := getProjectRoot()
+	cacheDir := filepath.Join(projectRoot, "storage", "cache")
 	os.MkdirAll(cacheDir, 0755)
 
 	finalPDF := filepath.Join(cacheDir, fmt.Sprintf("archive_%d.pdf", id))

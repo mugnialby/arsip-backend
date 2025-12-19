@@ -9,5 +9,5 @@ type Department struct {
 	CreatedBy      string     `gorm:"column:created_by;type:varchar(128);not null" json:"createdBy"`
 	CreatedAt      time.Time  `gorm:"column:created_at;autoCreateTime" json:"createdAt"`
 	ModifiedBy     *string    `gorm:"column:modified_by;type:varchar(128)" json:"modifiedBy,omitempty"`
-	ModifiedAt     *time.Time `gorm:"column:modified_at;autoUpdateTime" json:"modifiedAt,omitempty"`
+	ModifiedAt     *time.Time `gorm:"column:modified_at;" json:"modifiedAt,omitempty"`
 }

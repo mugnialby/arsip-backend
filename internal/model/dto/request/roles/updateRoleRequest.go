@@ -1,7 +1,8 @@
 package request
 
 type UpdateRoleRequest struct {
+	ID           uint   `json:"id"`
 	RoleName     string `json:"roleName" binding:"required"`
 	DepartmentID uint   `json:"departmentID" binding:"required"`
-	ModifiedBy   string `json:"modifiedBy"`
+	SubmittedBy  string `json:"submittedBy"`
 }

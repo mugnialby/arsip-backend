@@ -34,6 +34,14 @@ func (s *ArchiveService) FindArchiveByQuery(query string) ([]model.ArchiveHdr, e
 	return s.repo.FindArchiveByQuery(query)
 }
 
+func (s *ArchiveService) DeleteArchive(deleteArchiveRequest *request.DeleteArchiveRequest) error {
+	return s.repo.Delete(deleteArchiveRequest)
+}
+
 func (s *ArchiveService) FindArchiveByAdvanceQuery(advancedSearchRequest request.AdvancedSearchRequest) ([]model.ArchiveHdr, error) {
 	return s.repo.FindArchiveByAdvanceQuery(advancedSearchRequest)
+}
+
+func (s *ArchiveService) GetAllArchivesByData(getArchiveByDataRequest request.GetArchiveByDataRequest) ([]model.ArchiveHdr, error) {
+	return s.repo.GetAllArchivesByData(getArchiveByDataRequest)
 }

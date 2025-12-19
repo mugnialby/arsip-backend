@@ -1,6 +1,6 @@
 package request
 
-type DeleteUserRequest struct {
+type DeleteArchiveRoleAccessRequest struct {
 	ID          uint   `json:"id"`
 	SubmittedBy string `json:"submittedBy"`
 }

@@ -3,6 +3,7 @@ package handler
 import (
 	"net/http"
 	"strconv"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/mugnialby/perpustakaan-kejari-kota-bogor-backend/internal/model"
@@ -50,7 +51,8 @@ func (h *ArchiveCharacteristicHandler) CreateArchiveCharacteristic(c *gin.Contex
 		ID:                        0,
 		ArchiveCharacteristicName: newArchiveCharacteristicRequest.ArchiveCharacteristicName,
 		Status:                    "Y",
-		CreatedBy:                 newArchiveCharacteristicRequest.CreatedBy}
+		CreatedBy:                 newArchiveCharacteristicRequest.SubmittedBy,
+	}
 
 	if err := h.service.CreateArchiveCharacteristic(&newArchiveCharacteristic); err != nil {
 		// tambah logger di sini
@@ -62,13 +64,6 @@ func (h *ArchiveCharacteristicHandler) CreateArchiveCharacteristic(c *gin.Contex
 }
 
 func (h *ArchiveCharacteristicHandler) UpdateArchiveCharacteristicById(c *gin.Context) {
-	id, _ := strconv.Atoi(c.Param("id"))
-	archiveCharacteristic, err := h.service.GetArchiveCharacteristicByID(uint(id))
-	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "archive characteristic not found"})
-		return
-	}
-
 	var updateArchiveCharacteristicRequest request.UpdateArchiveCharacteristicRequest
 	if err := c.ShouldBind(&updateArchiveCharacteristicRequest); err != nil {
 		// tambah logger di sini
@@ -76,8 +71,18 @@ func (h *ArchiveCharacteristicHandler) UpdateArchiveCharacteristicById(c *gin.Co
 		return
 	}
 
+	archiveCharacteristic, err := h.service.GetArchiveCharacteristicByID(updateArchiveCharacteristicRequest.ID)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "data not found"})
+		return
+	}
+
+	timeNow := time.Now()
+
 	archiveCharacteristic.ArchiveCharacteristicName = updateArchiveCharacteristicRequest.ArchiveCharacteristicName
-	// role.ModifiedBy = &updateArchiveCharacteristicRequest.UserID
+	archiveCharacteristic.ModifiedBy = &updateArchiveCharacteristicRequest.SubmittedBy
+	archiveCharacteristic.ModifiedAt = &timeNow
+
 	if err := h.service.UpdateArchiveCharacteristic(archiveCharacteristic); err != nil {
 		// tambah logger di sini
 		response.Error(c, http.StatusInternalServerError, "API Fail")
@@ -88,19 +93,18 @@ func (h *ArchiveCharacteristicHandler) UpdateArchiveCharacteristicById(c *gin.Co
 }
 
 func (h *ArchiveCharacteristicHandler) DeleteArchiveCharacteristicById(c *gin.Context) {
-	id, _ := strconv.Atoi(c.Param("id"))
-	archiveCharacteristic, err := h.service.GetArchiveCharacteristicByID(uint(id))
-	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "archiveCharacteristic not found"})
+	var deleteArchiveCharacteristicRequest request.DeleteArchiveCharacteristicRequest
+	if err := c.ShouldBindJSON(&deleteArchiveCharacteristicRequest); err != nil {
+		// tambah logger di sini
+		response.Error(c, http.StatusBadRequest, "JSON Request is not valid")
 		return
 	}
 
-	archiveCharacteristic.Status = "N"
-	if err := h.service.UpdateArchiveCharacteristic(archiveCharacteristic); err != nil {
+	if err := h.service.DeleteArchiveCharacteristic(&deleteArchiveCharacteristicRequest); err != nil {
 		// tambah logger di sini
 		response.Error(c, http.StatusInternalServerError, "API Fail")
 		return
 	}
 
-	c.JSON(http.StatusOK, archiveCharacteristic)
+	c.Status(http.StatusOK)
 }

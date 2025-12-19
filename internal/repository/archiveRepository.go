@@ -1,6 +1,9 @@
 package repository
 
 import (
+	"errors"
+	"time"
+
 	"github.com/mugnialby/perpustakaan-kejari-kota-bogor-backend/internal/model"
 	request "github.com/mugnialby/perpustakaan-kejari-kota-bogor-backend/internal/model/dto/request/archive"
 	"gorm.io/gorm"
@@ -11,8 +14,10 @@ type ArchiveRepository interface {
 	FindByID(id uint) (*model.ArchiveHdr, error)
 	Create(archive *model.ArchiveHdr) error
 	Update(archive *model.ArchiveHdr) error
+	Delete(deleteArchiveRequest *request.DeleteArchiveRequest) error
 	FindArchiveByQuery(query string) ([]model.ArchiveHdr, error)
 	FindArchiveByAdvanceQuery(advancedSearchRequest request.AdvancedSearchRequest) ([]model.ArchiveHdr, error)
+	GetAllArchivesByData(getArchiveByDataRequest request.GetArchiveByDataRequest) ([]model.ArchiveHdr, error)
 }
 
 type archiveRepository struct {
@@ -31,6 +36,7 @@ func (r *archiveRepository) FindAll() ([]model.ArchiveHdr, error) {
 		Preload("ArchiveAttachments", "status = ?", "Y").
 		Preload("ArchiveCharacteristic").
 		Preload("ArchiveType").
+		Preload("ArchiveRoleAccess", "status = ?", "Y").
 		Order("archive_date ASC").
 		Find(&archives).Error
 
@@ -45,6 +51,8 @@ func (r *archiveRepository) FindByID(id uint) (*model.ArchiveHdr, error) {
 		Preload("ArchiveAttachments", "status = ?", "Y").
 		Preload("ArchiveCharacteristic").
 		Preload("ArchiveType").
+		Preload("ArchiveRoleAccess", "status = ?", "Y").
+		Preload("ArchiveRoleAccess.Role").
 		First(&archive).Error
 
 	return &archive, err
@@ -60,6 +68,26 @@ func (r *archiveRepository) Update(archive *model.ArchiveHdr) error {
 		Updates(archive).Error
 }
 
+func (r *archiveRepository) Delete(deleteArchiveRequest *request.DeleteArchiveRequest) error {
+	result := r.db.Model(&model.ArchiveHdr{}).
+		Where("id = ?", deleteArchiveRequest.ID).
+		Updates(map[string]interface{}{
+			"status":      "N",
+			"modified_by": deleteArchiveRequest.SubmittedBy,
+			"modified_at": time.Now(),
+		})
+
+	if result.Error != nil {
+		return result.Error
+	}
+
+	if result.RowsAffected == 0 {
+		return errors.New("no data found to delete")
+	}
+
+	return nil
+}
+
 func (r *archiveRepository) FindArchiveByQuery(queryStr string) ([]model.ArchiveHdr, error) {
 	var archives []model.ArchiveHdr
 
@@ -69,6 +97,7 @@ func (r *archiveRepository) FindArchiveByQuery(queryStr string) ([]model.Archive
 		Preload("ArchiveAttachments", "status = ?", "Y").
 		Preload("ArchiveCharacteristic").
 		Preload("ArchiveType").
+		Preload("ArchiveRoleAccess", "status = ?", "Y").
 		Order("archive_name ASC").
 		Find(&archives).Error
 
@@ -89,6 +118,33 @@ func (r *archiveRepository) FindArchiveByAdvanceQuery(req request.AdvancedSearch
 		Preload("ArchiveAttachments", "status = ?", "Y").
 		Preload("ArchiveCharacteristic").
 		Preload("ArchiveType").
+		Preload("ArchiveRoleAccess", "status = ?", "Y").
+		Order("archive_name ASC").
+		Find(&archives).Error
+
+	return archives, err
+}
+
+func (r *archiveRepository) GetAllArchivesByData(getArchiveByDataRequest request.GetArchiveByDataRequest) ([]model.ArchiveHdr, error) {
+	var archives []model.ArchiveHdr
+
+	err := r.db.
+		Model(&model.ArchiveHdr{}).
+		Joins(
+			`INNER JOIN archive_role_access
+				ON archive_role_access.archive_hdr_id = archive_hdr.id
+				AND archive_role_access.role_id = ?
+				AND archive_role_access.department_id = ?
+			`,
+			getArchiveByDataRequest.RoleID,
+			getArchiveByDataRequest.DepartmentID,
+		).
+		Where("archive_role_access.status = ?", "Y").
+		Where("archive_hdr.status = ?", "Y").
+		Preload("ArchiveAttachments", "status = ?", "Y").
+		Preload("ArchiveCharacteristic").
+		Preload("ArchiveType").
+		Order("archive_date DESC").
 		Order("archive_name ASC").
 		Find(&archives).Error
 

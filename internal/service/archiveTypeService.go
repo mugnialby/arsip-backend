@@ -2,6 +2,7 @@ package service
 
 import (
 	"github.com/mugnialby/perpustakaan-kejari-kota-bogor-backend/internal/model"
+	request "github.com/mugnialby/perpustakaan-kejari-kota-bogor-backend/internal/model/dto/request/archiveType"
 	"github.com/mugnialby/perpustakaan-kejari-kota-bogor-backend/internal/repository"
 )
 
@@ -27,4 +28,8 @@ func (s *ArchiveTypeService) CreateArchiveType(archiveType *model.ArchiveType) e
 
 func (s *ArchiveTypeService) UpdateArchiveType(archiveType *model.ArchiveType) error {
 	return s.repo.Update(archiveType)
+}
+
+func (s *ArchiveTypeService) DeleteArchiveType(deleteArchiveTypeRequest *request.DeleteArchiveTypeRequest) error {
+	return s.repo.Delete(deleteArchiveTypeRequest)
 }

@@ -3,6 +3,7 @@ package handler
 import (
 	"net/http"
 	"strconv"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/mugnialby/perpustakaan-kejari-kota-bogor-backend/internal/model"
@@ -54,7 +55,7 @@ func (h *UserHandler) CreateUser(c *gin.Context) {
 		DepartmentID: newUserRequest.DepartmentID,
 		RoleID:       newUserRequest.RoleID,
 		Status:       "Y",
-		CreatedBy:    newUserRequest.CreatedBy,
+		CreatedBy:    newUserRequest.SubmittedBy,
 	}
 
 	if err := h.service.CreateUser(&newUser); err != nil {
@@ -67,13 +68,6 @@ func (h *UserHandler) CreateUser(c *gin.Context) {
 }
 
 func (h *UserHandler) UpdateUserById(c *gin.Context) {
-	id, _ := strconv.Atoi(c.Param("id"))
-	user, err := h.service.GetUserByID(uint(id))
-	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Rack not found"})
-		return
-	}
-
 	var updateUserRequest request.UpdateUserRequest
 	if err := c.ShouldBind(&updateUserRequest); err != nil {
 		// tambah logger di sini
@@ -81,11 +75,20 @@ func (h *UserHandler) UpdateUserById(c *gin.Context) {
 		return
 	}
 
+	user, err := h.service.GetUserByID(updateUserRequest.ID)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "data not found"})
+		return
+	}
+
+	timeNow := time.Now()
+
 	user.UserId = updateUserRequest.UserId
 	user.FullName = updateUserRequest.FullName
 	user.DepartmentID = updateUserRequest.DepartmentID
 	user.RoleID = updateUserRequest.RoleID
-	user.ModifiedBy = &updateUserRequest.ModifiedBy
+	user.ModifiedBy = &updateUserRequest.SubmittedBy
+	user.ModifiedAt = &timeNow
 
 	if err := h.service.UpdateUser(user); err != nil {
 		// tambah logger di sini
@@ -97,19 +100,18 @@ func (h *UserHandler) UpdateUserById(c *gin.Context) {
 }
 
 func (h *UserHandler) DeleteUserById(c *gin.Context) {
-	id, _ := strconv.Atoi(c.Param("id"))
-	user, err := h.service.GetUserByID(uint(id))
-	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "user not found"})
+	var deleteUserRequest request.DeleteUserRequest
+	if err := c.ShouldBindJSON(&deleteUserRequest); err != nil {
+		// tambah logger di sini
+		response.Error(c, http.StatusBadRequest, "JSON Request is not valid")
 		return
 	}
 
-	user.Status = "N"
-	if err := h.service.UpdateUser(user); err != nil {
+	if err := h.service.DeleteUser(&deleteUserRequest); err != nil {
 		// tambah logger di sini
 		response.Error(c, http.StatusInternalServerError, "API Fail")
 		return
 	}
 
-	c.JSON(http.StatusOK, user)
+	c.Status(http.StatusOK)
 }

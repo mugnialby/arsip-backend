@@ -3,6 +3,7 @@ package handler
 import (
 	"net/http"
 	"strconv"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/mugnialby/perpustakaan-kejari-kota-bogor-backend/internal/model"
@@ -50,7 +51,7 @@ func (h *ArchiveTypeHandler) CreateArchiveType(c *gin.Context) {
 		ID:              0,
 		ArchiveTypeName: newArchiveTypeRequest.ArchiveTypeName,
 		Status:          "Y",
-		CreatedBy:       newArchiveTypeRequest.CreatedBy,
+		CreatedBy:       newArchiveTypeRequest.SubmittedBy,
 	}
 
 	if err := h.service.CreateArchiveType(&newArchiveType); err != nil {
@@ -63,13 +64,6 @@ func (h *ArchiveTypeHandler) CreateArchiveType(c *gin.Context) {
 }
 
 func (h *ArchiveTypeHandler) UpdateArchiveTypeById(c *gin.Context) {
-	id, _ := strconv.Atoi(c.Param("id"))
-	archiveType, err := h.service.GetArchiveTypeByID(uint(id))
-	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "archiveType not found"})
-		return
-	}
-
 	var updateArchiveTypeRequest request.UpdateArchiveTypeRequest
 	if err := c.ShouldBind(&updateArchiveTypeRequest); err != nil {
 		// tambah logger di sini
@@ -77,7 +71,18 @@ func (h *ArchiveTypeHandler) UpdateArchiveTypeById(c *gin.Context) {
 		return
 	}
 
+	archiveType, err := h.service.GetArchiveTypeByID(updateArchiveTypeRequest.ID)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "data not found"})
+		return
+	}
+
+	timeNow := time.Now()
+
 	archiveType.ArchiveTypeName = updateArchiveTypeRequest.ArchiveTypeName
+	archiveType.ModifiedBy = &updateArchiveTypeRequest.SubmittedBy
+	archiveType.ModifiedAt = &timeNow
+
 	if err := h.service.UpdateArchiveType(archiveType); err != nil {
 		// tambah logger di sini
 		response.Error(c, http.StatusInternalServerError, "API Fail")
@@ -88,19 +93,18 @@ func (h *ArchiveTypeHandler) UpdateArchiveTypeById(c *gin.Context) {
 }
 
 func (h *ArchiveTypeHandler) DeleteArchiveTypeById(c *gin.Context) {
-	id, _ := strconv.Atoi(c.Param("id"))
-	archiveType, err := h.service.GetArchiveTypeByID(uint(id))
-	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "archiveType not found"})
+	var deleteArchiveTypeRequest request.DeleteArchiveTypeRequest
+	if err := c.ShouldBindJSON(&deleteArchiveTypeRequest); err != nil {
+		// tambah logger di sini
+		response.Error(c, http.StatusBadRequest, "JSON Request is not valid")
 		return
 	}
 
-	archiveType.Status = "N"
-	if err := h.service.UpdateArchiveType(archiveType); err != nil {
+	if err := h.service.DeleteArchiveType(&deleteArchiveTypeRequest); err != nil {
 		// tambah logger di sini
 		response.Error(c, http.StatusInternalServerError, "API Fail")
 		return
 	}
 
-	c.JSON(http.StatusOK, archiveType)
+	c.Status(http.StatusOK)
 }

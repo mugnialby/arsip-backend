@@ -2,6 +2,7 @@ package service
 
 import (
 	"github.com/mugnialby/perpustakaan-kejari-kota-bogor-backend/internal/model"
+	request "github.com/mugnialby/perpustakaan-kejari-kota-bogor-backend/internal/model/dto/request/archiveCharacteristic"
 	"github.com/mugnialby/perpustakaan-kejari-kota-bogor-backend/internal/repository"
 )
 
@@ -27,4 +28,8 @@ func (s *ArchiveCharacteristicService) CreateArchiveCharacteristic(archiveCharac
 
 func (s *ArchiveCharacteristicService) UpdateArchiveCharacteristic(archiveCharacteristic *model.ArchiveCharacteristic) error {
 	return s.repo.Update(archiveCharacteristic)
+}
+
+func (s *ArchiveCharacteristicService) DeleteArchiveCharacteristic(deleteArchiveCharacteristicRequest *request.DeleteArchiveCharacteristicRequest) error {
+	return s.repo.Delete(deleteArchiveCharacteristicRequest)
 }

@@ -29,6 +29,6 @@ func (s *ArchiveAttachmentService) UpdateArchiveAttachment(archiveAttachment *mo
 	return s.repo.Update(archiveAttachment)
 }
 
-func (s *ArchiveAttachmentService) DeleteArchiveAttachmentByArchiveID(archiveID uint) error {
-	return s.repo.DeleteArchiveAttachmentByArchiveID(archiveID)
+func (s *ArchiveAttachmentService) DeleteArchiveAttachmentByArchiveID(archiveID uint, submittedBy string) error {
+	return s.repo.DeleteArchiveAttachmentByArchiveID(archiveID, submittedBy)
 }

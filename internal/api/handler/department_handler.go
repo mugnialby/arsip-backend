@@ -3,6 +3,7 @@ package handler
 import (
 	"net/http"
 	"strconv"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/mugnialby/perpustakaan-kejari-kota-bogor-backend/internal/model"
@@ -50,7 +51,7 @@ func (h *DepartmentHandler) CreateDepartment(c *gin.Context) {
 		ID:             0,
 		DepartmentName: newDepartmentRequest.DepartmentName,
 		Status:         "Y",
-		CreatedBy:      newDepartmentRequest.CreatedBy,
+		CreatedBy:      newDepartmentRequest.SubmittedBy,
 	}
 
 	if err := h.service.CreateDepartment(&newDepartment); err != nil {
@@ -63,13 +64,6 @@ func (h *DepartmentHandler) CreateDepartment(c *gin.Context) {
 }
 
 func (h *DepartmentHandler) UpdateDepartmentById(c *gin.Context) {
-	id, _ := strconv.Atoi(c.Param("id"))
-	department, err := h.service.GetDepartmentByID(uint(id))
-	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "department not found"})
-		return
-	}
-
 	var updateDepartmentRequest request.UpdateDepartmentRequest
 	if err := c.ShouldBind(&updateDepartmentRequest); err != nil {
 		// tambah logger di sini
@@ -77,7 +71,18 @@ func (h *DepartmentHandler) UpdateDepartmentById(c *gin.Context) {
 		return
 	}
 
+	department, err := h.service.GetDepartmentByID(updateDepartmentRequest.ID)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "data not found"})
+		return
+	}
+
+	timeNow := time.Now()
+
 	department.DepartmentName = updateDepartmentRequest.DepartmentName
+	department.ModifiedBy = &updateDepartmentRequest.SubmittedBy
+	department.ModifiedAt = &timeNow
+
 	if err := h.service.UpdateDepartment(department); err != nil {
 		// tambah logger di sini
 		response.Error(c, http.StatusInternalServerError, "API Fail")
@@ -88,19 +93,18 @@ func (h *DepartmentHandler) UpdateDepartmentById(c *gin.Context) {
 }
 
 func (h *DepartmentHandler) DeleteDepartmentById(c *gin.Context) {
-	id, _ := strconv.Atoi(c.Param("id"))
-	department, err := h.service.GetDepartmentByID(uint(id))
-	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "department not found"})
+	var deleteDepartmentRequest request.DeleteDepartmentRequest
+	if err := c.ShouldBindJSON(&deleteDepartmentRequest); err != nil {
+		// tambah logger di sini
+		response.Error(c, http.StatusBadRequest, "JSON Request is not valid")
 		return
 	}
 
-	department.Status = "N"
-	if err := h.service.UpdateDepartment(department); err != nil {
+	if err := h.service.DeleteDepartment(&deleteDepartmentRequest); err != nil {
 		// tambah logger di sini
 		response.Error(c, http.StatusInternalServerError, "API Fail")
 		return
 	}
 
-	c.JSON(http.StatusOK, department)
+	c.Status(http.StatusOK)
 }

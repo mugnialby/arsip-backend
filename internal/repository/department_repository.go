@@ -1,7 +1,11 @@
 package repository
 
 import (
+	"errors"
+	"time"
+
 	"github.com/mugnialby/perpustakaan-kejari-kota-bogor-backend/internal/model"
+	request "github.com/mugnialby/perpustakaan-kejari-kota-bogor-backend/internal/model/dto/request/department"
 	"gorm.io/gorm"
 )
 
@@ -10,6 +14,7 @@ type DepartmentRepository interface {
 	FindByID(id uint) (*model.Department, error)
 	Create(department *model.Department) error
 	Update(department *model.Department) error
+	Delete(deleteDepartmentRequest *request.DeleteDepartmentRequest) error
 }
 
 type departmentRepository struct {
@@ -40,4 +45,24 @@ func (r *departmentRepository) Create(department *model.Department) error {
 
 func (r *departmentRepository) Update(department *model.Department) error {
 	return r.db.Save(department).Error
+}
+
+func (r *departmentRepository) Delete(deleteDepartmentRequest *request.DeleteDepartmentRequest) error {
+	result := r.db.Model(&model.Department{}).
+		Where("id = ?", deleteDepartmentRequest.ID).
+		Updates(map[string]interface{}{
+			"status":      "N",
+			"modified_by": deleteDepartmentRequest.SubmittedBy,
+			"modified_at": time.Now(),
+		})
+
+	if result.Error != nil {
+		return result.Error
+	}
+
+	if result.RowsAffected == 0 {
+		return errors.New("no data found to delete")
+	}
+
+	return nil
 }

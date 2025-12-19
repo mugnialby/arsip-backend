@@ -2,6 +2,7 @@ package service
 
 import (
 	"github.com/mugnialby/perpustakaan-kejari-kota-bogor-backend/internal/model"
+	request "github.com/mugnialby/perpustakaan-kejari-kota-bogor-backend/internal/model/dto/request/department"
 	"github.com/mugnialby/perpustakaan-kejari-kota-bogor-backend/internal/repository"
 )
 
@@ -27,4 +28,8 @@ func (s *DepartmentService) CreateDepartment(department *model.Department) error
 
 func (s *DepartmentService) UpdateDepartment(department *model.Department) error {
 	return s.repo.Update(department)
+}
+
+func (s *DepartmentService) DeleteDepartment(deleteDepartmentRequest *request.DeleteDepartmentRequest) error {
+	return s.repo.Delete(deleteDepartmentRequest)
 }

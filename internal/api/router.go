@@ -20,6 +20,7 @@ func NewRouter(
 	archiveAttachmentService *service.ArchiveAttachmentService,
 	archiveTypeService *service.ArchiveTypeService,
 	archiveCharacteristicService *service.ArchiveCharacteristicService,
+	archiveRoleAccessService *service.ArchiveRoleAccessService,
 ) *gin.Engine {
 	r := gin.Default()
 
@@ -57,7 +58,7 @@ func NewRouter(
 	roleHandler := handler.NewRoleHandler(roleService)
 	departmentHandler := handler.NewDepartmentHandler(departmentService)
 	authHandler := handler.NewAuthHandler(userService)
-	archiveHandler := handler.NewArchiveHandler(archiveService, archiveAttachmentService)
+	archiveHandler := handler.NewArchiveHandler(archiveService, archiveAttachmentService, archiveRoleAccessService)
 	archiveTypeHandler := handler.NewArchiveTypeHandler(archiveTypeService)
 	archiveCharacteristicHandler := handler.NewArchiveCharacteristicHandler(archiveCharacteristicService)
 
@@ -88,8 +89,8 @@ func NewRouter(
 				users.GET("/", userHandler.GetAllUsers)
 				users.GET("/:id", userHandler.GetUserByID)
 				users.POST("/", userHandler.CreateUser)
-				users.PUT("/:id", userHandler.UpdateUserById)
-				users.PATCH("/:id", userHandler.DeleteUserById)
+				users.PUT("/", userHandler.UpdateUserById)
+				users.PATCH("/", userHandler.DeleteUserById)
 			}
 
 			roles := master.Group("/roles")
@@ -97,8 +98,8 @@ func NewRouter(
 				roles.GET("/", roleHandler.GetAllRoles)
 				roles.GET("/:id", roleHandler.GetRoleByID)
 				roles.POST("/", roleHandler.CreateRole)
-				roles.PUT("/:id", roleHandler.UpdateRoleById)
-				roles.PATCH("/:id", roleHandler.DeleteRoleById)
+				roles.PUT("/", roleHandler.UpdateRoleById)
+				roles.PATCH("/", roleHandler.DeleteRoleById)
 				roles.GET("/findByQuery/department/:id", roleHandler.GetRoleByDepartmentID)
 			}
 
@@ -107,8 +108,8 @@ func NewRouter(
 				department.GET("/", departmentHandler.GetAllDepartments)
 				department.GET("/:id", departmentHandler.GetDepartmentByID)
 				department.POST("/", departmentHandler.CreateDepartment)
-				department.PUT("/:id", departmentHandler.UpdateDepartmentById)
-				department.PATCH("/:id", departmentHandler.DeleteDepartmentById)
+				department.PUT("/", departmentHandler.UpdateDepartmentById)
+				department.PATCH("/", departmentHandler.DeleteDepartmentById)
 			}
 
 			archiveType := master.Group("/archiveTypes")
@@ -116,8 +117,8 @@ func NewRouter(
 				archiveType.GET("/", archiveTypeHandler.GetAllArchiveTypes)
 				archiveType.GET("/:id", archiveTypeHandler.GetArchiveTypeByID)
 				archiveType.POST("/", archiveTypeHandler.CreateArchiveType)
-				archiveType.PUT("/:id", archiveTypeHandler.UpdateArchiveTypeById)
-				archiveType.PATCH("/:id", archiveTypeHandler.DeleteArchiveTypeById)
+				archiveType.PUT("/", archiveTypeHandler.UpdateArchiveTypeById)
+				archiveType.PATCH("/", archiveTypeHandler.DeleteArchiveTypeById)
 			}
 
 			archiveCharacteristic := master.Group("/archiveCharacteristics")
@@ -125,18 +126,19 @@ func NewRouter(
 				archiveCharacteristic.GET("/", archiveCharacteristicHandler.GetAllArchiveCharacteristics)
 				archiveCharacteristic.GET("/:id", archiveCharacteristicHandler.GetArchiveCharacteristicByID)
 				archiveCharacteristic.POST("/", archiveCharacteristicHandler.CreateArchiveCharacteristic)
-				archiveCharacteristic.PUT("/:id", archiveCharacteristicHandler.UpdateArchiveCharacteristicById)
-				archiveCharacteristic.PATCH("/:id", archiveCharacteristicHandler.DeleteArchiveCharacteristicById)
+				archiveCharacteristic.PUT("/", archiveCharacteristicHandler.UpdateArchiveCharacteristicById)
+				archiveCharacteristic.PATCH("/", archiveCharacteristicHandler.DeleteArchiveCharacteristicById)
 			}
 		}
 
 		archives := api.Group("/archives")
 		{
 			archives.GET("/", archiveHandler.GetAllArchives)
+			archives.POST("/getByData", archiveHandler.GetAllArchivesByData)
 			archives.GET("/:id", archiveHandler.GetArchiveByID)
 			archives.POST("/", archiveHandler.CreateArchive)
-			archives.PUT("/:id", archiveHandler.UpdateArchiveById)
-			archives.PATCH("/:id", archiveHandler.DeleteArchiveById)
+			archives.PUT("/", archiveHandler.UpdateArchiveById)
+			archives.PATCH("/", archiveHandler.DeleteArchiveById)
 			archives.GET("/find/:query", archiveHandler.FindArchiveByQuery)
 			archives.POST("/findByQuery/advanced", archiveHandler.FindArchiveByAdvanceQuery)
 			archives.GET("/:id/pdf", archiveHandler.StreamMergedPDF)

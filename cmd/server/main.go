@@ -43,6 +43,9 @@ func main() {
 	archiveCharacteristicRepo := repository.NewArchiveCharacteristicRepository(ctx.DB)
 	archiveCharacteristicService := service.NewArchiveCharacteristicService(archiveCharacteristicRepo)
 
+	archiveRoleAccessRepo := repository.NewArchiveRoleAccessRepository(ctx.DB)
+	archiveRoleAccessService := service.NewArchiveRoleAccessService(archiveRoleAccessRepo)
+
 	// --- API Router
 	router := api.NewRouter(
 		userService,
@@ -52,6 +55,7 @@ func main() {
 		archiveAttachmentService,
 		archiveTypeService,
 		archiveCharacteristicService,
+		archiveRoleAccessService,
 	)
 
 	logger.Log.Infof("🚀 Server starting in %s mode on port %s", cfg.AppEnv, cfg.Port)

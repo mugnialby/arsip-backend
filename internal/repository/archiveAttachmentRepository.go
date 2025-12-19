@@ -1,6 +1,9 @@
 package repository
 
 import (
+	"errors"
+	"time"
+
 	"github.com/mugnialby/perpustakaan-kejari-kota-bogor-backend/internal/model"
 	"gorm.io/gorm"
 )
@@ -10,7 +13,7 @@ type ArchiveAttachmentRepository interface {
 	FindByID(id uint) (*model.ArchiveAttachment, error)
 	Create(archiveAttachment *model.ArchiveAttachment) error
 	Update(archiveAttachment *model.ArchiveAttachment) error
-	DeleteArchiveAttachmentByArchiveID(archiveID uint) error
+	DeleteArchiveAttachmentByArchiveID(archiveID uint, submittedBy string) error
 }
 
 type archiveAttachmentRepository struct {
@@ -42,8 +45,23 @@ func (r *archiveAttachmentRepository) Update(archiveAttachment *model.ArchiveAtt
 	return r.db.Save(archiveAttachment).Error
 }
 
-func (r *archiveAttachmentRepository) DeleteArchiveAttachmentByArchiveID(archiveID uint) error {
-	return r.db.Model(&model.ArchiveAttachment{}).
-		Where("archive_hdr_id = ? AND status = ?", archiveID, "Y").
-		Update("status", "N").Error
+func (r *archiveAttachmentRepository) DeleteArchiveAttachmentByArchiveID(archiveID uint, submittedBy string) error {
+	result := r.db.Model(&model.ArchiveAttachment{}).
+		Where("archive_hdr_id = ?", archiveID).
+		Where("status = ?", "Y").
+		Updates(map[string]interface{}{
+			"status":      "N",
+			"modified_by": submittedBy,
+			"modified_at": time.Now(),
+		})
+
+	if result.Error != nil {
+		return result.Error
+	}
+
+	if result.RowsAffected == 0 {
+		return errors.New("no data found to delete")
+	}
+
+	return nil
 }

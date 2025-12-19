@@ -6,5 +6,5 @@ type NewUserRequest struct {
 	FullName     string `json:"fullName" binding:"required"`
 	DepartmentID uint   `json:"departmentId" binding:"required"`
 	RoleID       uint   `json:"roleId" binding:"required"`
-	CreatedBy    string `json:"createdBy"`
+	SubmittedBy  string `json:"submittedBy"`
 }

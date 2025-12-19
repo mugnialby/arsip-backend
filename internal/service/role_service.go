@@ -2,6 +2,7 @@ package service
 
 import (
 	"github.com/mugnialby/perpustakaan-kejari-kota-bogor-backend/internal/model"
+	request "github.com/mugnialby/perpustakaan-kejari-kota-bogor-backend/internal/model/dto/request/roles"
 	"github.com/mugnialby/perpustakaan-kejari-kota-bogor-backend/internal/repository"
 )
 
@@ -27,6 +28,10 @@ func (s *RoleService) CreateRole(role *model.Role) error {
 
 func (s *RoleService) UpdateRole(role *model.Role) error {
 	return s.repo.Update(role)
+}
+
+func (s *RoleService) DeleteRole(deleteRoleRequest *request.DeleteRoleRequest) error {
+	return s.repo.Delete(deleteRoleRequest)
 }
 
 func (s *RoleService) GetRoleByDepartmentID(departmentId uint) ([]model.Role, error) {

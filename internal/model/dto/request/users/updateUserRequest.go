@@ -1,9 +1,10 @@
 package request
 
 type UpdateUserRequest struct {
+	ID           uint   `json:"id"`
 	UserId       string `json:"userId" binding:"required"`
 	FullName     string `json:"fullName" binding:"required"`
 	DepartmentID uint   `json:"departmentId" binding:"required"`
 	RoleID       uint   `json:"roleId" binding:"required"`
-	ModifiedBy   string `json:"modifiedBy"`
+	SubmittedBy  string `json:"submittedBy"`
 }

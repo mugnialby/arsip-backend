@@ -68,7 +68,7 @@ func (r *archiveRoleAccessRepository) Delete(deleteArchiveRoleAccessRequest *req
 }
 
 func (r *archiveRoleAccessRepository) DeleteArchiveRoleAccessByArchiveID(archiveID uint, submittedBy string) error {
-	result := r.db.Model(&model.ArchiveAttachment{}).
+	result := r.db.Model(&model.ArchiveRoleAccess{}).
 		Where("archive_hdr_id = ?", archiveID).
 		Where("status = ?", "Y").
 		Updates(map[string]interface{}{

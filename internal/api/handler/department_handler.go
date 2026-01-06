@@ -9,7 +9,9 @@ import (
 	"github.com/mugnialby/arsip-backend/internal/model"
 	request "github.com/mugnialby/arsip-backend/internal/model/dto/request/department"
 	"github.com/mugnialby/arsip-backend/internal/service"
+	"github.com/mugnialby/arsip-backend/pkg/logger"
 	"github.com/mugnialby/arsip-backend/pkg/response"
+	"go.uber.org/zap"
 )
 
 type DepartmentHandler struct {
@@ -21,29 +23,80 @@ func NewDepartmentHandler(s *service.DepartmentService) *DepartmentHandler {
 }
 
 func (h *DepartmentHandler) GetAllDepartments(c *gin.Context) {
+	start := time.Now()
+	requestID, _ := c.Get("request_id")
+
 	departments, err := h.service.GetAllDepartments()
 	if err != nil {
-		response.Error(c, http.StatusInternalServerError, err.Error())
+		logger.Log.Error("department.get_all.failed",
+			zap.String("request_id", requestID.(string)),
+			zap.Error(err),
+			zap.Duration("duration_ms", time.Since(start)),
+		)
+
+		response.Error(c, http.StatusInternalServerError, "Failed to get data")
 		return
 	}
+
+	logger.Log.Info("department.get_all.success",
+		zap.String("request_id", requestID.(string)),
+		zap.Int("count", len(departments)),
+		zap.Duration("duration_ms", time.Since(start)),
+	)
+
 	response.Success(c, departments)
 }
 
 func (h *DepartmentHandler) GetDepartmentByID(c *gin.Context) {
-	id, _ := strconv.Atoi(c.Param("id"))
-	department, err := h.service.GetDepartmentByID(uint(id))
+	start := time.Now()
+	requestID, _ := c.Get("request_id")
+
+	id, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "department not found"})
+		logger.Log.Warn("department.get_by_id.invalid_id",
+			zap.String("request_id", requestID.(string)),
+			zap.String("param", c.Param("id")),
+			zap.Error(err),
+			zap.Duration("duration_ms", time.Since(start)),
+		)
+
+		response.Error(c, http.StatusBadRequest, "Invalid ID")
 		return
 	}
-	c.JSON(http.StatusOK, department)
+
+	department, err := h.service.GetDepartmentByID(uint(id))
+	if err != nil {
+		logger.Log.Info("department.get_by_id.failed",
+			zap.String("request_id", requestID.(string)),
+			zap.Uint("department_id", uint(id)),
+			zap.Error(err),
+			zap.Duration("duration_ms", time.Since(start)),
+		)
+
+		response.Error(c, http.StatusNotFound, "Failed to get data")
+		return
+	}
+
+	logger.Log.Info("department.get_by_id.success",
+		zap.String("request_id", requestID.(string)),
+		zap.Duration("duration_ms", time.Since(start)),
+	)
+
+	response.Success(c, department)
 }
 
 func (h *DepartmentHandler) CreateDepartment(c *gin.Context) {
+	start := time.Now()
+	requestID, _ := c.Get("request_id")
+
 	var newDepartmentRequest request.NewDepartmentRequest
 	if err := c.ShouldBindJSON(&newDepartmentRequest); err != nil {
-		// tambah logger di sini
-		response.Error(c, http.StatusBadRequest, "JSON Request is not valid")
+		logger.Log.Warn("department.create.invalid_request",
+			zap.String("request_id", requestID.(string)),
+			zap.Error(err),
+		)
+
+		response.Error(c, http.StatusBadRequest, "JSON request is not valid")
 		return
 	}
 
@@ -55,56 +108,110 @@ func (h *DepartmentHandler) CreateDepartment(c *gin.Context) {
 	}
 
 	if err := h.service.CreateDepartment(&newDepartment); err != nil {
-		// tambah logger di sini
-		response.Error(c, http.StatusInternalServerError, "API Fail")
+		logger.Log.Error("department.create.failed",
+			zap.String("request_id", requestID.(string)),
+			zap.Any("payload", newDepartment),
+			zap.Error(err),
+			zap.Duration("duration_ms", time.Since(start)),
+		)
+
+		response.Error(c, http.StatusInternalServerError, "Failed to create data")
 		return
 	}
+
+	logger.Log.Info("department.create.success",
+		zap.String("request_id", requestID.(string)),
+		zap.Duration("duration_ms", time.Since(start)),
+	)
 
 	c.Status(http.StatusCreated)
 }
 
 func (h *DepartmentHandler) UpdateDepartmentById(c *gin.Context) {
+	start := time.Now()
+	requestID, _ := c.Get("request_id")
+
 	var updateDepartmentRequest request.UpdateDepartmentRequest
-	if err := c.ShouldBind(&updateDepartmentRequest); err != nil {
-		// tambah logger di sini
+	if err := c.ShouldBindJSON(&updateDepartmentRequest); err != nil {
+		logger.Log.Warn("department.update.invalid_request",
+			zap.String("request_id", requestID.(string)),
+			zap.Error(err),
+			zap.Duration("duration_ms", time.Since(start)),
+		)
+
 		response.Error(c, http.StatusBadRequest, "JSON Request is not valid")
 		return
 	}
 
 	department, err := h.service.GetDepartmentByID(updateDepartmentRequest.ID)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "data not found"})
+		logger.Log.Error("department.update.get_by_id.failed",
+			zap.String("request_id", requestID.(string)),
+			zap.Any("payload", updateDepartmentRequest.ID),
+			zap.Error(err),
+			zap.Duration("duration_ms", time.Since(start)),
+		)
+
+		response.Error(c, http.StatusNotFound, "Failed to get data")
 		return
 	}
 
 	timeNow := time.Now()
-
 	department.DepartmentName = updateDepartmentRequest.DepartmentName
 	department.ModifiedBy = &updateDepartmentRequest.SubmittedBy
 	department.ModifiedAt = &timeNow
 
 	if err := h.service.UpdateDepartment(department); err != nil {
-		// tambah logger di sini
-		response.Error(c, http.StatusInternalServerError, "API Fail")
+		logger.Log.Error("department.update.save.failed",
+			zap.String("request_id", requestID.(string)),
+			zap.Any("payload", updateDepartmentRequest),
+			zap.Error(err),
+			zap.Duration("duration_ms", time.Since(start)),
+		)
+
+		response.Error(c, http.StatusInternalServerError, "Failed to update data")
 		return
 	}
 
-	c.JSON(http.StatusOK, department)
+	logger.Log.Info("department.update.success",
+		zap.String("request_id", requestID.(string)),
+		zap.Duration("duration_ms", time.Since(start)),
+	)
+
+	response.Success(c, department)
 }
 
 func (h *DepartmentHandler) DeleteDepartmentById(c *gin.Context) {
+	start := time.Now()
+	requestID, _ := c.Get("request_id")
+
 	var deleteDepartmentRequest request.DeleteDepartmentRequest
 	if err := c.ShouldBindJSON(&deleteDepartmentRequest); err != nil {
-		// tambah logger di sini
+		logger.Log.Warn("department.delete.invalid_request",
+			zap.String("request_id", requestID.(string)),
+			zap.Error(err),
+		)
+
 		response.Error(c, http.StatusBadRequest, "JSON Request is not valid")
 		return
 	}
 
 	if err := h.service.DeleteDepartment(&deleteDepartmentRequest); err != nil {
-		// tambah logger di sini
-		response.Error(c, http.StatusInternalServerError, "API Fail")
+		logger.Log.Error("department.delete.failed",
+			zap.String("request_id", requestID.(string)),
+			zap.Error(err),
+			zap.Any("payload", deleteDepartmentRequest),
+			zap.Duration("duration_ms", time.Since(start)),
+		)
+
+		response.Error(c, http.StatusInternalServerError, "Failed to delete data")
 		return
 	}
+
+	logger.Log.Info("department.delete.success",
+		zap.String("request_id", requestID.(string)),
+		zap.Duration("duration_ms", time.Since(start)),
+	)
 
 	c.Status(http.StatusOK)
 }

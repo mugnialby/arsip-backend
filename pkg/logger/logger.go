@@ -4,29 +4,54 @@ import (
 	"os"
 
 	"go.uber.org/zap"
+	"go.uber.org/zap/zapcore"
 )
 
-var Log *zap.SugaredLogger
+var Log *zap.Logger
 
-func InitLogger() {
-	var logger *zap.Logger
-	var err error
+func Init() {
+	cfg := zap.Config{
+		Level:             zap.NewAtomicLevelAt(zap.InfoLevel),
+		Development:       false,
+		Encoding:          "json",
+		DisableCaller:     false,
+		DisableStacktrace: false,
+		OutputPaths:       []string{"stdout"},
+		ErrorOutputPaths:  []string{"stderr"},
+		EncoderConfig: zapcore.EncoderConfig{
+			TimeKey:       "@timestamp",
+			LevelKey:      "level",
+			NameKey:       "logger",
+			CallerKey:     "caller",
+			MessageKey:    "message",
+			StacktraceKey: "stacktrace",
 
-	if os.Getenv("APP_ENV") == "dev" {
-		logger, err = zap.NewDevelopment()
-	} else {
-		logger, err = zap.NewProduction()
+			EncodeTime:   zapcore.ISO8601TimeEncoder,
+			EncodeLevel:  zapcore.LowercaseLevelEncoder,
+			EncodeCaller: zapcore.ShortCallerEncoder,
+		},
 	}
 
+	baseLogger, err := cfg.Build(
+		zap.AddCaller(),
+		zap.AddStacktrace(zap.ErrorLevel),
+	)
 	if err != nil {
 		panic(err)
 	}
 
-	Log = logger.Sugar()
+	Log = baseLogger.With(
+		zap.String("service", "arsip-backend"),
+		zap.String("environment", getEnv("APP_ENV", "development")),
+	)
+
+	zap.ReplaceGlobals(Log)
 }
 
-func Sync() {
-	if Log != nil {
-		Log.Sync()
+func getEnv(key, fallback string) string {
+	if v := os.Getenv(key); v != "" {
+		return v
 	}
+
+	return fallback
 }

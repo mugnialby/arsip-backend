@@ -236,3 +236,9 @@ WHERE archive_role_access.status = 'Y'
     AND archive_hdr.status = 'Y'
 ORDER BY archive_date DESC,
     archive_name ASC
+
+SELECT * FROM archive_HDR;
+SELECT * FROM archive_attachments;
+SELECT * FROM archive_role_access;
+
+select * from archive_role_access where archive_hdr_id = 6 and status = 'Y'

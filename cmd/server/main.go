@@ -1,24 +1,28 @@
 package main
 
 import (
-	"log"
-
 	"github.com/mugnialby/arsip-backend/internal/api"
 	"github.com/mugnialby/arsip-backend/internal/appcontext"
 	"github.com/mugnialby/arsip-backend/internal/config"
 	"github.com/mugnialby/arsip-backend/internal/repository"
 	"github.com/mugnialby/arsip-backend/internal/service"
 	"github.com/mugnialby/arsip-backend/pkg/logger"
+	"go.uber.org/zap"
 )
 
 func main() {
+	/*------ LOGGER ------*/
+	logger.Init()
+	defer logger.Log.Sync()
+
+	/*------ CONFIG ------*/
 	cfg := config.Load()
-	logger.InitLogger()
-	defer logger.Sync()
 
 	ctx, err := appcontext.NewAppContext(cfg)
 	if err != nil {
-		log.Fatal(err)
+		logger.Log.Error("main.failed",
+			zap.Error(err),
+		)
 	}
 
 	/*------ SERVICES ------*/
@@ -46,7 +50,7 @@ func main() {
 	archiveRoleAccessRepo := repository.NewArchiveRoleAccessRepository(ctx.DB)
 	archiveRoleAccessService := service.NewArchiveRoleAccessService(archiveRoleAccessRepo)
 
-	// --- API Router
+	/*------ ROUTERS ------*/
 	router := api.NewRouter(
 		userService,
 		roleService,
@@ -58,6 +62,9 @@ func main() {
 		archiveRoleAccessService,
 	)
 
-	logger.Log.Infof("🚀 Server starting in %s mode on port %s", cfg.AppEnv, cfg.Port)
+	logger.Log.Info("main.success",
+		zap.Any("message", "Server starting in"+cfg.AppEnv+" mode on port "+cfg.Port),
+	)
+
 	router.Run(":" + cfg.Port)
 }

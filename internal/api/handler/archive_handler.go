@@ -20,7 +20,9 @@ import (
 	archiveRoleAccessRequest "github.com/mugnialby/arsip-backend/internal/model/dto/request/archiveRoleAccess"
 	"github.com/mugnialby/arsip-backend/internal/service"
 	"github.com/mugnialby/arsip-backend/internal/utils"
+	"github.com/mugnialby/arsip-backend/pkg/logger"
 	"github.com/mugnialby/arsip-backend/pkg/response"
+	"go.uber.org/zap"
 )
 
 type ArchiveHandler struct {
@@ -49,37 +51,103 @@ func NewArchiveHandler(
 }
 
 func (h *ArchiveHandler) GetAllArchives(c *gin.Context) {
+	start := time.Now()
+	requestID, _ := c.Get("request_id")
+
 	archives, err := h.archiveService.GetAllArchives()
 	if err != nil {
-		response.Error(c, http.StatusInternalServerError, err.Error())
+		logger.Log.Error("archive.get_all.failed",
+			zap.String("request_id", requestID.(string)),
+			zap.Error(err),
+			zap.Duration("duration_ms", time.Since(start)),
+		)
+
+		response.Error(c, http.StatusInternalServerError, "Failed to get all data")
 		return
 	}
+
+	logger.Log.Info("archive.get_all.success",
+		zap.String("request_id", requestID.(string)),
+		zap.Int("count", len(archives)),
+		zap.Duration("duration_ms", time.Since(start)),
+	)
+
 	response.Success(c, archives)
 }
 
 func (h *ArchiveHandler) GetAllArchivesByData(c *gin.Context) {
+	start := time.Now()
+	requestID, _ := c.Get("request_id")
+
 	var getArchiveByDataRequest archiveRequest.GetArchiveByDataRequest
 	if err := c.ShouldBindJSON(&getArchiveByDataRequest); err != nil {
-		response.Error(c, http.StatusBadRequest, "Form data is not valid")
+		logger.Log.Warn("archive.get_by_data.invalid_request",
+			zap.String("request_id", requestID.(string)),
+			zap.Error(err),
+		)
+
+		response.Error(c, http.StatusBadRequest, "JSON request is not valid")
 		return
 	}
 
 	archives, err := h.archiveService.GetAllArchivesByData(getArchiveByDataRequest)
 	if err != nil {
-		response.Error(c, http.StatusInternalServerError, err.Error())
+		logger.Log.Error("archive.get_by_data.failed",
+			zap.String("request_id", requestID.(string)),
+			zap.Any("filters", getArchiveByDataRequest),
+			zap.Error(err),
+			zap.Duration("duration_ms", time.Since(start)),
+		)
+
+		response.Error(c, http.StatusInternalServerError, "Failed to get all data")
 		return
 	}
+
+	logger.Log.Info("archive.get_by_data.success",
+		zap.String("request_id", requestID.(string)),
+		zap.Int("count", len(archives)),
+		zap.Duration("duration_ms", time.Since(start)),
+	)
+
 	response.Success(c, archives)
 }
 
 func (h *ArchiveHandler) GetArchiveByID(c *gin.Context) {
-	id, _ := strconv.Atoi(c.Param("id"))
+	start := time.Now()
+	requestID, _ := c.Get("request_id")
+
+	id, err := strconv.Atoi(c.Param("id"))
+	if err != nil {
+		logger.Log.Warn("archive.get_by_id.invalid_id",
+			zap.String("request_id", requestID.(string)),
+			zap.String("param", c.Param("id")),
+			zap.Error(err),
+			zap.Duration("duration_ms", time.Since(start)),
+		)
+
+		response.Error(c, http.StatusBadRequest, "Invalid ID")
+		return
+	}
 
 	archive, err := h.archiveService.GetArchiveByID(uint(id))
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Archive not found"})
+		logger.Log.Info("archive.get_by_id.failed",
+			zap.String("request_id", requestID.(string)),
+			zap.Uint("archive_id", uint(id)),
+			zap.Error(err),
+			zap.Duration("duration_ms", time.Since(start)),
+		)
+
+		response.Error(c, http.StatusNotFound, "Failed to get data")
 		return
 	}
+
+	logger.Log.Info("archive.get_by_id.archive_hdr.success",
+		zap.String("request_id", requestID.(string)),
+		zap.Uint("archive_id", uint(id)),
+		zap.Int("attachments", len(archive.ArchiveAttachments)),
+		zap.Duration("duration_ms", time.Since(start)),
+	)
 
 	for _, archiveAttachment := range archive.ArchiveAttachments {
 		if archiveAttachment.FileLocation == "" {
@@ -107,16 +175,30 @@ func (h *ArchiveHandler) GetArchiveByID(c *gin.Context) {
 		default:
 			archiveAttachment.FileBase64 = base64Data
 		}
-
 	}
 
-	c.JSON(http.StatusOK, archive)
+	logger.Log.Info("archive.get_by_id.success",
+		zap.String("request_id", requestID.(string)),
+		zap.Uint("archive_id", uint(id)),
+		zap.Int("attachments", len(archive.ArchiveAttachments)),
+		zap.Duration("duration_ms", time.Since(start)),
+	)
+
+	response.Success(c, archive)
 }
 
 func (h *ArchiveHandler) CreateArchive(c *gin.Context) {
+	start := time.Now()
+	requestID, _ := c.Get("request_id")
+
 	var newArchiveRequest archiveRequest.NewArchiveRequest
 	if err := c.ShouldBindJSON(&newArchiveRequest); err != nil {
-		response.Error(c, http.StatusBadRequest, "Form data is not valid")
+		logger.Log.Warn("archive.create.invalid_request",
+			zap.String("request_id", requestID.(string)),
+			zap.Error(err),
+		)
+
+		response.Error(c, http.StatusBadRequest, "JSON request is not valid")
 		return
 	}
 
@@ -132,9 +214,24 @@ func (h *ArchiveHandler) CreateArchive(c *gin.Context) {
 	}
 
 	if err := h.archiveService.CreateArchive(&newArchive); err != nil {
+		logger.Log.Error("archive.create.create_archive_hdr.failed",
+			zap.String("request_id", requestID.(string)),
+			zap.Any("payload", newArchive),
+			zap.Error(err),
+			zap.Duration("duration_ms", time.Since(start)),
+		)
+
 		response.Error(c, http.StatusInternalServerError, "Failed to create archive hdr")
 		return
 	}
+
+	logger.Log.Info("archive.create.archive_hdr.success",
+		zap.String("request_id", requestID.(string)),
+		zap.Uint("archive_id", newArchive.ID),
+		zap.Int("attachments", len(newArchiveRequest.ListArchiveAttachments)),
+		zap.Int("role_access", len(newArchiveRequest.RoleAccess)),
+		zap.Duration("duration_ms", time.Since(start)),
+	)
 
 	for _, roleAccess := range newArchiveRequest.RoleAccess {
 		newArchiveRoleAccess := model.ArchiveRoleAccess{
@@ -146,7 +243,14 @@ func (h *ArchiveHandler) CreateArchive(c *gin.Context) {
 		}
 
 		if err := h.archiveRoleAccessService.CreateArchiveRoleAccess(&newArchiveRoleAccess); err != nil {
-			response.Error(c, http.StatusInternalServerError, "Failed to save archive RoleAccess")
+			logger.Log.Error("archive.create.create_archive_role_access.failed",
+				zap.String("request_id", requestID.(string)),
+				zap.Any("payload", roleAccess),
+				zap.Error(err),
+				zap.Duration("duration_ms", time.Since(start)),
+			)
+
+			response.Error(c, http.StatusInternalServerError, "Failed to create archive role access")
 			return
 		}
 	}
@@ -155,7 +259,6 @@ func (h *ArchiveHandler) CreateArchive(c *gin.Context) {
 		if archiveAttachment.IsNew {
 			base64Data := archiveAttachment.FileBase64
 
-			// remove base64 header
 			if strings.Contains(base64Data, ",") {
 				parts := strings.SplitN(base64Data, ",", 2)
 				base64Data = parts[1]
@@ -163,28 +266,59 @@ func (h *ArchiveHandler) CreateArchive(c *gin.Context) {
 
 			fileExt := DetectBase64Extension(archiveAttachment.FileBase64)
 			if fileExt == "" {
-				response.Error(c, http.StatusBadRequest, "Unsupported file type")
+				logger.Log.Error("archive.create.detect_base64_extension.failed",
+					zap.String("request_id", requestID.(string)),
+					zap.Duration("duration_ms", time.Since(start)),
+				)
+
+				response.Error(c, http.StatusBadRequest, "File extension not found")
 				return
 			}
 
-			// validate allowed file type
 			if !isAllowedFileType(fileExt) {
-				response.Error(c, http.StatusBadRequest, "File type not allowed")
+				logger.Log.Error("archive.create.file_extension_not_allowed.failed",
+					zap.String("request_id", requestID.(string)),
+					zap.Duration("duration_ms", time.Since(start)),
+				)
+
+				response.Error(c, http.StatusBadRequest, "File extension not allowed")
 				return
 			}
 
 			decodedBytes, err := base64.StdEncoding.DecodeString(base64Data)
 			if err != nil {
+				logger.Log.Error("archive.create.base64_invalid.failed",
+					zap.String("request_id", requestID.(string)),
+					zap.Duration("duration_ms", time.Since(start)),
+				)
+
 				response.Error(c, http.StatusBadRequest, "Invalid base64 file data")
 				return
 			}
 
-			uploadDir := createUploadDirectory(newArchive.ID)
+			uploadDir, err := createUploadDirectory(newArchive.ID)
+			if err != nil {
+				logger.Log.Error("archive.create.create_upload_directory.failed",
+					zap.String("request_id", requestID.(string)),
+					zap.Error(err),
+					zap.Duration("duration_ms", time.Since(start)),
+				)
+
+				response.Error(c, http.StatusInternalServerError, "Failed to create upload directory")
+				return
+			}
+
 			fileName := fmt.Sprintf("%d_%d.%s", newArchive.ID, time.Now().UnixNano(), fileExt)
 			fileLocation := filepath.Join(uploadDir, fileName)
 
 			if err := os.WriteFile(fileLocation, decodedBytes, 0644); err != nil {
-				response.Error(c, http.StatusInternalServerError, "Failed to save file")
+				logger.Log.Error("archive.create.write_file.failed",
+					zap.String("request_id", requestID.(string)),
+					zap.Error(err),
+					zap.Duration("duration_ms", time.Since(start)),
+				)
+
+				response.Error(c, http.StatusInternalServerError, "Failed to write file")
 				return
 			}
 
@@ -197,26 +331,51 @@ func (h *ArchiveHandler) CreateArchive(c *gin.Context) {
 			}
 
 			if err := h.archiveAttachmentService.CreateArchiveAttachment(&newArchiveAttachment); err != nil {
+				logger.Log.Error("archive.create.create_archive_attachment_data.failed",
+					zap.String("request_id", requestID.(string)),
+					zap.Error(err),
+					zap.Duration("duration_ms", time.Since(start)),
+				)
+
 				response.Error(c, http.StatusInternalServerError, "Failed to save archive attachment")
 				return
 			}
 		}
 	}
 
-	c.JSON(http.StatusCreated, gin.H{"message": "Archive created successfully"})
+	logger.Log.Info("archive.create.success",
+		zap.String("request_id", requestID.(string)),
+		zap.Duration("duration_ms", time.Since(start)),
+	)
+
+	c.Status(http.StatusCreated)
 }
 
 func (h *ArchiveHandler) UpdateArchiveById(c *gin.Context) {
+	start := time.Now()
+	requestID, _ := c.Get("request_id")
+
 	var updateArchiveRequest archiveRequest.UpdateArchiveRequest
-	if err := c.ShouldBind(&updateArchiveRequest); err != nil {
-		// tambah logger di sini
+	if err := c.ShouldBindJSON(&updateArchiveRequest); err != nil {
+		logger.Log.Warn("archive.update.invalid_request",
+			zap.String("request_id", requestID.(string)),
+			zap.Error(err),
+		)
+
 		response.Error(c, http.StatusBadRequest, "JSON Request is not valid")
 		return
 	}
 
 	archive, err := h.archiveService.GetArchiveByID(updateArchiveRequest.ID)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "data not found"})
+		logger.Log.Error("archive.update.get_by_id.failed",
+			zap.String("request_id", requestID.(string)),
+			zap.Any("payload", updateArchiveRequest.ID),
+			zap.Error(err),
+			zap.Duration("duration_ms", time.Since(start)),
+		)
+
+		response.Error(c, http.StatusNotFound, "Failed to get data")
 		return
 	}
 
@@ -231,8 +390,14 @@ func (h *ArchiveHandler) UpdateArchiveById(c *gin.Context) {
 	archive.ModifiedAt = &timeNow
 
 	if err := h.archiveService.UpdateArchive(archive); err != nil {
-		// tambah logger di sini
-		response.Error(c, http.StatusInternalServerError, "API Fail")
+		logger.Log.Error("archive.update.save.failed",
+			zap.String("request_id", requestID.(string)),
+			zap.Any("payload", updateArchiveRequest),
+			zap.Error(err),
+			zap.Duration("duration_ms", time.Since(start)),
+		)
+
+		response.Error(c, http.StatusInternalServerError, "Failed to update data")
 		return
 	}
 
@@ -247,7 +412,14 @@ func (h *ArchiveHandler) UpdateArchiveById(c *gin.Context) {
 			}
 
 			if err := h.archiveRoleAccessService.CreateArchiveRoleAccess(&newArchiveRoleAccess); err != nil {
-				response.Error(c, http.StatusInternalServerError, "Failed to save archive RoleAccess")
+				logger.Log.Error("archive.update.create_role_access.failed",
+					zap.String("request_id", requestID.(string)),
+					zap.Any("payload", newArchiveRoleAccess),
+					zap.Error(err),
+					zap.Duration("duration_ms", time.Since(start)),
+				)
+
+				response.Error(c, http.StatusInternalServerError, "Failed to create data")
 				return
 			}
 		}
@@ -259,12 +431,16 @@ func (h *ArchiveHandler) UpdateArchiveById(c *gin.Context) {
 			}
 
 			if err := h.archiveRoleAccessService.DeleteArchiveRoleAccess(&deleteArchiveRoleAccess); err != nil {
-				// tambah logger di sini
-				response.Error(c, http.StatusInternalServerError, "API Fail")
+				logger.Log.Error("archive.update.delete_role_access.failed",
+					zap.String("request_id", requestID.(string)),
+					zap.Any("payload", deleteArchiveRoleAccess),
+					zap.Error(err),
+					zap.Duration("duration_ms", time.Since(start)),
+				)
+
+				response.Error(c, http.StatusInternalServerError, "Failed to delete data")
 				return
 			}
-
-			c.Status(http.StatusOK)
 		}
 	}
 
@@ -272,7 +448,6 @@ func (h *ArchiveHandler) UpdateArchiveById(c *gin.Context) {
 		if archiveAttachment.IsNew {
 			base64Data := archiveAttachment.FileBase64
 
-			// remove base64 header
 			if strings.Contains(base64Data, ",") {
 				parts := strings.SplitN(base64Data, ",", 2)
 				base64Data = parts[1]
@@ -280,28 +455,60 @@ func (h *ArchiveHandler) UpdateArchiveById(c *gin.Context) {
 
 			fileExt := DetectBase64Extension(archiveAttachment.FileBase64)
 			if fileExt == "" {
-				response.Error(c, http.StatusBadRequest, "Unsupported file type")
+				logger.Log.Error("archive.update.detect_base64_ext.failed",
+					zap.String("request_id", requestID.(string)),
+					zap.Duration("duration_ms", time.Since(start)),
+				)
+
+				response.Error(c, http.StatusBadRequest, "File extension not found")
 				return
 			}
 
-			// validate allowed file type
 			if !isAllowedFileType(fileExt) {
-				response.Error(c, http.StatusBadRequest, "File type not allowed")
+				logger.Log.Error("archive.update.file_extension.failed",
+					zap.String("request_id", requestID.(string)),
+					zap.Duration("duration_ms", time.Since(start)),
+				)
+
+				response.Error(c, http.StatusBadRequest, "File extension not allowed")
 				return
 			}
 
 			decodedBytes, err := base64.StdEncoding.DecodeString(base64Data)
 			if err != nil {
+				logger.Log.Error("archive.create.base64_conversion.failed",
+					zap.String("request_id", requestID.(string)),
+					zap.Error(err),
+					zap.Duration("duration_ms", time.Since(start)),
+				)
+
 				response.Error(c, http.StatusBadRequest, "Invalid base64 file data")
 				return
 			}
 
-			uploadDir := createUploadDirectory(updateArchiveRequest.ID)
+			uploadDir, err := createUploadDirectory(updateArchiveRequest.ID)
+			if err != nil {
+				logger.Log.Error("archive.create.create_upload_directory.failed",
+					zap.String("request_id", requestID.(string)),
+					zap.Error(err),
+					zap.Duration("duration_ms", time.Since(start)),
+				)
+
+				response.Error(c, http.StatusInternalServerError, "Failed to create upload directory")
+				return
+			}
+
 			fileName := fmt.Sprintf("%d_%d.%s", updateArchiveRequest.ID, time.Now().UnixNano(), fileExt)
 			fileLocation := filepath.Join(uploadDir, fileName)
 
 			if err := os.WriteFile(fileLocation, decodedBytes, 0644); err != nil {
-				response.Error(c, http.StatusInternalServerError, "Failed to save file")
+				logger.Log.Error("archive.update.write_file.failed",
+					zap.String("request_id", requestID.(string)),
+					zap.Error(err),
+					zap.Duration("duration_ms", time.Since(start)),
+				)
+
+				response.Error(c, http.StatusInternalServerError, "Failed to write file")
 				return
 			}
 
@@ -314,11 +521,30 @@ func (h *ArchiveHandler) UpdateArchiveById(c *gin.Context) {
 			}
 
 			if err := h.archiveAttachmentService.CreateArchiveAttachment(&newArchiveAttachment); err != nil {
-				response.Error(c, http.StatusInternalServerError, "Failed to save archive attachment")
+				logger.Log.Error("archive.update.create_archive_attachment.failed",
+					zap.String("request_id", requestID.(string)),
+					zap.Error(err),
+					zap.Any("payload", &newArchiveAttachment),
+					zap.Duration("duration_ms", time.Since(start)),
+				)
+
+				response.Error(c, http.StatusInternalServerError, "Failed to create data")
 				return
 			}
 
-			projectRoot := getProjectRoot()
+			projectRoot, err := utils.GetProjectRoot()
+			if err != nil {
+				logger.Log.Info("archive.stream.get_project_root.failed",
+					zap.String("request_id", requestID.(string)),
+					zap.String("param", c.Param("id")),
+					zap.Error(err),
+					zap.Duration("duration_ms", time.Since(start)),
+				)
+
+				response.Error(c, http.StatusBadRequest, "Failed to get project root")
+				return
+			}
+
 			cacheFolder := "storage/cache"
 			cacheFilePath := filepath.Join(projectRoot, cacheFolder, fmt.Sprintf("archive_%d.pdf", updateArchiveRequest.ID))
 
@@ -331,24 +557,48 @@ func (h *ArchiveHandler) UpdateArchiveById(c *gin.Context) {
 			}
 		}
 
-		// ❌ Handle deleted attachments
 		if archiveAttachment.IsDelete {
 			archiveAttachment, err := h.archiveAttachmentService.GetArchiveAttachmentByID(archiveAttachment.ID)
 			if err != nil {
-				c.JSON(http.StatusNotFound, gin.H{"error": "Archive attachment not found"})
+				logger.Log.Error("archive.update.get_archive_attachment_by_id.failed",
+					zap.String("request_id", requestID.(string)),
+					zap.Error(err),
+					zap.Any("payload", &archiveAttachment),
+					zap.Duration("duration_ms", time.Since(start)),
+				)
+
+				response.Error(c, http.StatusNotFound, "Failed to get data")
 				return
 			}
 
 			archiveAttachment.Status = "N"
 			if err := h.archiveAttachmentService.UpdateArchiveAttachment(archiveAttachment); err != nil {
-				// tambah logger di sini
-				response.Error(c, http.StatusInternalServerError, "API Fail")
+				logger.Log.Error("archive.update.update_archive_attachment.failed",
+					zap.String("request_id", requestID.(string)),
+					zap.Error(err),
+					zap.Any("payload", archiveAttachment),
+					zap.Duration("duration_ms", time.Since(start)),
+				)
+
+				response.Error(c, http.StatusInternalServerError, "Failed to update data")
 				return
 			}
 
 			c.JSON(http.StatusOK, archiveAttachment)
 
-			projectRoot := getProjectRoot()
+			projectRoot, err := utils.GetProjectRoot()
+			if err != nil {
+				logger.Log.Info("archive.stream.get_project_root.failed",
+					zap.String("request_id", requestID.(string)),
+					zap.String("param", c.Param("id")),
+					zap.Error(err),
+					zap.Duration("duration_ms", time.Since(start)),
+				)
+
+				response.Error(c, http.StatusBadRequest, "Failed to get project root")
+				return
+			}
+
 			cacheFolder := "storage/cache"
 			cacheFilePath := filepath.Join(projectRoot, cacheFolder, fmt.Sprintf("archive_%d.pdf", updateArchiveRequest.ID))
 
@@ -362,89 +612,215 @@ func (h *ArchiveHandler) UpdateArchiveById(c *gin.Context) {
 		}
 	}
 
-	c.JSON(http.StatusOK, archive)
+	logger.Log.Info("archive.update.success",
+		zap.String("request_id", requestID.(string)),
+		zap.Duration("duration_ms", time.Since(start)),
+	)
+
+	response.Success(c, archive)
 }
 
 func (h *ArchiveHandler) DeleteArchiveById(c *gin.Context) {
+	start := time.Now()
+	requestID, _ := c.Get("request_id")
+
 	var deleteArchiveRequest archiveRequest.DeleteArchiveRequest
 	if err := c.ShouldBindJSON(&deleteArchiveRequest); err != nil {
-		// tambah logger di sini
+		logger.Log.Warn("archive.delete.invalid_request",
+			zap.String("request_id", requestID.(string)),
+			zap.Error(err),
+		)
+
 		response.Error(c, http.StatusBadRequest, "JSON Request is not valid")
 		return
 	}
 
 	if err := h.archiveService.DeleteArchive(&deleteArchiveRequest); err != nil {
-		// tambah logger di sini
-		response.Error(c, http.StatusInternalServerError, "API Fail")
+		logger.Log.Error("archive.delete.archive.failed",
+			zap.String("request_id", requestID.(string)),
+			zap.Error(err),
+			zap.Any("payload", deleteArchiveRequest),
+			zap.Duration("duration_ms", time.Since(start)),
+		)
+
+		response.Error(c, http.StatusInternalServerError, "Failed to delete data")
 		return
 	}
 
 	if err := h.archiveAttachmentService.DeleteArchiveAttachmentByArchiveID(deleteArchiveRequest.ID, deleteArchiveRequest.SubmittedBy); err != nil {
-		// tambah logger di sini
-		response.Error(c, http.StatusInternalServerError, "API Fail")
+		logger.Log.Error("archive.delete.archive_attachment.failed",
+			zap.String("request_id", requestID.(string)),
+			zap.Error(err),
+			zap.Any("payload", deleteArchiveRequest),
+			zap.Duration("duration_ms", time.Since(start)),
+		)
+
+		response.Error(c, http.StatusInternalServerError, "Failed to delete data")
 		return
 	}
 
 	if err := h.archiveRoleAccessService.DeleteArchiveRoleAccessByArchiveID(deleteArchiveRequest.ID, deleteArchiveRequest.SubmittedBy); err != nil {
-		// tambah logger di sini
-		response.Error(c, http.StatusInternalServerError, "API Fail")
+		logger.Log.Error("archive.delete.archive_role_access.failed",
+			zap.String("request_id", requestID.(string)),
+			zap.Error(err),
+			zap.Any("payload", deleteArchiveRequest),
+			zap.Duration("duration_ms", time.Since(start)),
+		)
+
+		response.Error(c, http.StatusInternalServerError, "Failed to delete data")
 		return
 	}
+
+	logger.Log.Info("archive.delete.success",
+		zap.String("request_id", requestID.(string)),
+		zap.Duration("duration_ms", time.Since(start)),
+	)
 
 	c.Status(http.StatusOK)
 }
 
 func (h *ArchiveHandler) FindArchiveByQuery(c *gin.Context) {
+	start := time.Now()
+	requestID, _ := c.Get("request_id")
+
 	query := c.Param("query")
-	archives, err := h.archiveService.FindArchiveByQuery(query)
-	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Archives not found"})
+	if query == "" {
+		logger.Log.Warn("archive.find_by_query.invalid_request",
+			zap.String("request_id", requestID.(string)),
+			zap.Any("message", "query is not valid"),
+		)
+
+		response.Error(c, http.StatusBadRequest, "JSON request is not valid")
 		return
 	}
 
-	c.JSON(http.StatusOK, archives)
+	archives, err := h.archiveService.FindArchiveByQuery(query)
+	if err != nil {
+		logger.Log.Error("archive.find_by_query.failed",
+			zap.String("request_id", requestID.(string)),
+			zap.Error(err),
+			zap.Any("payload", query),
+			zap.Duration("duration_ms", time.Since(start)),
+		)
+
+		response.Error(c, http.StatusNotFound, "Failed to get data")
+		return
+	}
+
+	logger.Log.Info("archive.find_by_query.success",
+		zap.String("request_id", requestID.(string)),
+		zap.Duration("duration_ms", time.Since(start)),
+	)
+
+	response.Success(c, archives)
 }
 
 func (h *ArchiveHandler) FindArchiveByAdvanceQuery(c *gin.Context) {
+	start := time.Now()
+	requestID, _ := c.Get("request_id")
+
 	var advancedSearchRequest archiveRequest.AdvancedSearchRequest
 	if err := c.ShouldBindJSON(&advancedSearchRequest); err != nil {
-		response.Error(c, http.StatusBadRequest, "JSON is not valid")
+		logger.Log.Warn("archive.find_by_advance_query.invalid_request",
+			zap.String("request_id", requestID.(string)),
+			zap.Error(err),
+		)
+
+		response.Error(c, http.StatusBadRequest, "JSON request is not valid")
 		return
 	}
 
 	archives, err := h.archiveService.FindArchiveByAdvanceQuery(advancedSearchRequest)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Archives not found"})
+		logger.Log.Error("archive.find_by_advance_query.failed",
+			zap.String("request_id", requestID.(string)),
+			zap.Error(err),
+			zap.Any("payload", advancedSearchRequest),
+			zap.Duration("duration_ms", time.Since(start)),
+		)
+
+		response.Error(c, http.StatusNotFound, "Failed to get data")
 		return
 	}
 
-	c.JSON(http.StatusOK, archives)
+	logger.Log.Info("archive.find_by_query.success",
+		zap.String("request_id", requestID.(string)),
+		zap.Duration("duration_ms", time.Since(start)),
+	)
+
+	response.Success(c, archives)
 }
 
 func (h *ArchiveHandler) StreamMergedPDF(c *gin.Context) {
-	id, _ := strconv.Atoi(c.Param("id"))
+	start := time.Now()
+	requestID, _ := c.Get("request_id")
+
+	id, err := strconv.Atoi(c.Param("id"))
+	if err != nil {
+		logger.Log.Warn("archive.stream.invalid_id",
+			zap.String("request_id", requestID.(string)),
+			zap.String("param", c.Param("id")),
+			zap.Error(err),
+			zap.Duration("duration_ms", time.Since(start)),
+		)
+
+		response.Error(c, http.StatusBadRequest, "Invalid ID")
+		return
+	}
 
 	archive, err := h.archiveService.GetArchiveByID(uint(id))
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Archive not found"})
+		logger.Log.Error("archive.stream.get_by_id.failed",
+			zap.String("request_id", requestID.(string)),
+			zap.String("param", c.Param("id")),
+			zap.Error(err),
+			zap.Duration("duration_ms", time.Since(start)),
+		)
+
+		response.Error(c, http.StatusBadRequest, "Failed to get data")
 		return
 	}
 
 	if len(archive.ArchiveAttachments) == 0 {
-		c.JSON(http.StatusNotFound, gin.H{"error": "No attachments"})
+		logger.Log.Info("archive.stream.get_by_id.no_attachment",
+			zap.String("request_id", requestID.(string)),
+			zap.String("param", c.Param("id")),
+			zap.Duration("duration_ms", time.Since(start)),
+		)
+
+		response.Error(c, http.StatusBadRequest, "Attachment not found")
 		return
 	}
 
-	projectRoot := getProjectRoot()
+	projectRoot, err := utils.GetProjectRoot()
+	if err != nil {
+		logger.Log.Info("archive.stream.get_project_root.failed",
+			zap.String("request_id", requestID.(string)),
+			zap.String("param", c.Param("id")),
+			zap.Error(err),
+			zap.Duration("duration_ms", time.Since(start)),
+		)
+
+		response.Error(c, http.StatusBadRequest, "Failed to get project root")
+		return
+	}
+
 	cacheDir := filepath.Join(projectRoot, "storage", "cache")
-	os.MkdirAll(cacheDir, 0755)
+
+	if err := os.MkdirAll(cacheDir, 0755); err != nil {
+		logger.Log.Error("archive.stream.create_cache_directory.failed",
+			zap.String("request_id", requestID.(string)),
+			zap.String("param", c.Param("id")),
+			zap.Error(err),
+			zap.Duration("duration_ms", time.Since(start)),
+		)
+	}
 
 	finalPDF := filepath.Join(cacheDir, fmt.Sprintf("archive_%d.pdf", id))
 
-	// ✅ Serve cache
 	if stat, err := os.Stat(finalPDF); err == nil {
 		if time.Since(stat.ModTime()) < CacheTTL {
-			streamFileChunked(c, finalPDF)
+			streamFileChunked(c, finalPDF, requestID, start)
 			return
 		}
 	}
@@ -470,19 +846,37 @@ func (h *ArchiveHandler) StreamMergedPDF(c *gin.Context) {
 	if len(imageFiles) > 0 {
 		tempImagePDF = filepath.Join(cacheDir, fmt.Sprintf("images_%d.pdf", id))
 		if err := convertImagesToPDF(imageFiles, tempImagePDF); err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			logger.Log.Error("archive.stream.convert_images_to_pdf.failed",
+				zap.String("request_id", requestID.(string)),
+				zap.String("param", c.Param("id")),
+				zap.Error(err),
+				zap.Duration("duration_ms", time.Since(start)),
+			)
+
+			response.Error(c, http.StatusInternalServerError, "Failed to convert images to pdf")
 			return
 		}
+
 		pdfFiles = append([]string{tempImagePDF}, pdfFiles...)
 	}
 
 	if len(pdfFiles) == 0 {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "No valid files"})
-		return
+		logger.Log.Warn("archive.stream.pdf_files.not_found",
+			zap.String("request_id", requestID.(string)),
+			zap.String("param", c.Param("id")),
+			zap.Duration("duration_ms", time.Since(start)),
+		)
 	}
 
 	if err := mergePDFs(pdfFiles, finalPDF); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		logger.Log.Error("archive.stream.merge_pdfs.failed",
+			zap.String("request_id", requestID.(string)),
+			zap.String("param", c.Param("id")),
+			zap.Error(err),
+			zap.Duration("duration_ms", time.Since(start)),
+		)
+
+		response.Error(c, http.StatusInternalServerError, "Failed to merge pdfs")
 		return
 	}
 
@@ -491,7 +885,12 @@ func (h *ArchiveHandler) StreamMergedPDF(c *gin.Context) {
 		_ = os.Remove(tempImagePDF)
 	}
 
-	streamFileChunked(c, finalPDF)
+	logger.Log.Info("archive.stream.success",
+		zap.String("request_id", requestID.(string)),
+		zap.Duration("duration_ms", time.Since(start)),
+	)
+
+	streamFileChunked(c, finalPDF, requestID, start)
 }
 
 func DetectBase64Extension(base64Str string) string {
@@ -531,10 +930,17 @@ func isAllowedFileType(ext string) bool {
 	return allowedExtensions[ext]
 }
 
-func streamFileChunked(c *gin.Context, filePath string) {
+func streamFileChunked(c *gin.Context, filePath string, requestID any, start time.Time) {
 	file, err := os.Open(filePath)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to open file"})
+		logger.Log.Error("archive.stream.chunked.failed",
+			zap.String("request_id", requestID.(string)),
+			zap.String("param", c.Param("id")),
+			zap.Error(err),
+			zap.Duration("duration_ms", time.Since(start)),
+		)
+
+		response.Error(c, http.StatusInternalServerError, "Failed to open file")
 		return
 	}
 	defer file.Close()
@@ -560,55 +966,27 @@ func streamFileChunked(c *gin.Context, filePath string) {
 			return
 		}
 	}
+
+	logger.Log.Info("archive.stream.chunked.success",
+		zap.String("request_id", requestID.(string)),
+		zap.Duration("duration_ms", time.Since(start)),
+	)
 }
 
-func getProjectRoot() string {
-	exe, err := os.Executable()
+func createUploadDirectory(archiveId uint) (string, error) {
+	projectRoot, err := utils.GetProjectRoot()
 	if err != nil {
-		log.Fatal("Cannot determine executable path:", err)
+		return "", err
 	}
-
-	dir := filepath.Dir(exe)
-
-	// Walk up until we find the project folder "arsip-backend"
-	for {
-		if strings.HasSuffix(dir, "arsip-backend") {
-			return dir
-		}
-
-		parent := filepath.Dir(dir)
-		if parent == dir {
-			log.Fatal("Unable to find project root (arsip-backend)")
-		}
-		dir = parent
-	}
-}
-
-func createUploadDirectory(archiveId uint) string {
-	projectRoot := getProjectRoot()
 
 	convertedArchiveId := strconv.Itoa(int(archiveId))
 	uploadDir := filepath.Join(projectRoot, "storage", "uploads", "archives", convertedArchiveId)
 
-	if _, err := os.Stat(uploadDir); os.IsNotExist(err) {
-		if err := os.MkdirAll(uploadDir, 0755); err != nil {
-			log.Fatal("Failed to create upload dir:", err)
-		}
-		log.Println("Created upload directory:", uploadDir)
-	} else {
-		log.Println("Upload directory exists:", uploadDir)
+	if err := os.MkdirAll(uploadDir, 0755); err != nil {
+		return "", err
 	}
 
-	return uploadDir
-}
-
-func getImageMagickCmd() string {
-	switch runtime.GOOS {
-	case "windows":
-		return "magick" // ImageMagick 7+
-	default:
-		return "magick"
-	}
+	return uploadDir, nil
 }
 
 func convertImagesToPDF(imageFiles []string, outputPDF string) error {
@@ -617,7 +995,7 @@ func convertImagesToPDF(imageFiles []string, outputPDF string) error {
 	}
 
 	args := append(imageFiles, outputPDF)
-	cmd := exec.Command(getImageMagickCmd(), args...)
+	cmd := exec.Command("magick", args...)
 
 	utils.ApplySysProcAttr(cmd)
 
@@ -625,6 +1003,7 @@ func convertImagesToPDF(imageFiles []string, outputPDF string) error {
 	if err != nil {
 		return fmt.Errorf("imagemagick error: %v | %s", err, string(out))
 	}
+
 	return nil
 }
 
@@ -637,7 +1016,7 @@ func mergePDFs(inputs []string, output string) error {
 
 	var cmd *exec.Cmd
 	if runtime.GOOS == "windows" {
-		cmd = exec.Command(getPDFUnitePath(), args...)
+		cmd = exec.Command(`C:\poppler\Library\bin\pdfunite.exe`, args...)
 		utils.ApplySysProcAttr(cmd)
 	} else {
 		cmd = exec.Command("pdfunite", args...)
@@ -649,12 +1028,4 @@ func mergePDFs(inputs []string, output string) error {
 	}
 
 	return nil
-}
-
-func getPDFUnitePath() string {
-	// OPTION A: if added to PATH
-	// return "pdfunite"
-
-	// OPTION B (recommended): absolute path
-	return `C:\poppler\Library\bin\pdfunite.exe`
 }

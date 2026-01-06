@@ -7,6 +7,7 @@ import (
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"github.com/mugnialby/arsip-backend/internal/api/handler"
+	"github.com/mugnialby/arsip-backend/internal/api/middleware"
 	"github.com/mugnialby/arsip-backend/internal/config"
 	"github.com/mugnialby/arsip-backend/internal/service"
 )
@@ -23,17 +24,14 @@ func NewRouter(
 	archiveRoleAccessService *service.ArchiveRoleAccessService,
 ) *gin.Engine {
 	r := gin.Default()
+	r.Use(middleware.RequestLogger())
 
-	// Apply CORS middleware FIRST
 	r.Use(cors.New(cors.Config{
-		// AllowOrigins:     []string{"http://localhost:3000", "http://192.168.50.52:3000"},
 		AllowOriginFunc: func(origin string) bool {
-			// Always allow localhost for development
 			if origin == "http://localhost:3000" {
 				return true
 			}
 
-			// Allow any local IP in 192.168.x.x or 10.x.x.x or 172.16–31.x.x range
 			matched192, _ := regexp.MatchString(`^http://192\.168\.\d+\.\d+:3000$`, origin)
 			matched10, _ := regexp.MatchString(`^http://10\.\d+\.\d+\.\d+:3000$`, origin)
 			matched172, _ := regexp.MatchString(`^http://172\.(1[6-9]|2[0-9]|3[0-1])\.\d+\.\d+:3000$`, origin)
@@ -46,7 +44,6 @@ func NewRouter(
 		MaxAge:           12 * time.Hour,
 	}))
 
-	// Optional manual handler for preflight
 	r.OPTIONS("/*any", func(c *gin.Context) {
 		c.Status(204)
 	})
@@ -64,12 +61,10 @@ func NewRouter(
 
 	api := r.Group("/api")
 	{
-		// Public routes
 		api.GET("/health", func(c *gin.Context) {
 			c.JSON(200, gin.H{"status": "ok"})
 		})
 
-		// Auth routes
 		auth := api.Group("/auth")
 		{
 			auth.POST("/authenticate", authHandler.Login)

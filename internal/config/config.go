@@ -1,11 +1,14 @@
 package config
 
 import (
-	"log"
 	"os"
+	"path/filepath"
 	"strconv"
 
 	"github.com/joho/godotenv"
+	"github.com/mugnialby/arsip-backend/internal/utils"
+	"github.com/mugnialby/arsip-backend/pkg/logger"
+	"go.uber.org/zap"
 )
 
 // Config holds all environment-based configuration
@@ -30,14 +33,25 @@ type Config struct {
 	JWTExpiresIn int
 }
 
-// Load reads configuration from .env or environment variables
 func Load() *Config {
-	// Load .env file (only for local development)
-	if err := godotenv.Load(); err != nil {
-		log.Println("⚠️  No .env file found, using system environment variables")
+	root, err := utils.GetProjectRoot()
+	if err != nil {
+		logger.Log.Warn("config.project_root.not_found",
+			zap.Error(err),
+		)
+
+		return nil
 	}
 
-	// Parse JWT expiration
+	envPath := filepath.Join(root, "config", ".env")
+
+	if err := godotenv.Load(envPath); err != nil {
+		logger.Log.Warn("config.env.load.failed",
+			zap.String("path", envPath),
+			zap.String("message", "No .env file found, using system environment variables"),
+		)
+	}
+
 	jwtExpStr := getEnv("JWT_EXPIRATION_MINUTES", "60")
 	jwtExp, err := strconv.Atoi(jwtExpStr)
 	if err != nil {
@@ -62,10 +76,10 @@ func Load() *Config {
 	}
 }
 
-// Helper to get env var or fallback
 func getEnv(key, fallback string) string {
 	if v, ok := os.LookupEnv(key); ok {
 		return v
 	}
+
 	return fallback
 }

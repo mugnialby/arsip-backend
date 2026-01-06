@@ -4,6 +4,8 @@ import (
 	"fmt"
 
 	"github.com/mugnialby/arsip-backend/internal/config"
+	"github.com/mugnialby/arsip-backend/pkg/logger"
+	"go.uber.org/zap"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 )
@@ -35,7 +37,9 @@ func NewAppContext(cfg *config.Config) (*AppContext, error) {
 	// 	)
 	// }
 
-	fmt.Println("✅ Database connected and migrated successfully.")
+	logger.Log.Info("main.context.database.success",
+		zap.Any("message", "Database connected and migrated successfully"),
+	)
 
 	return &AppContext{
 		DB: db,

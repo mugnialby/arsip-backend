@@ -914,7 +914,8 @@ func (h *ArchiveHandler) StreamMergedPDF(c *gin.Context) {
 	// 	return err
 	// }
 
-	time.Sleep(500 * time.Millisecond)
+	time.Sleep(5000 * time.Millisecond)
+	logger.Log.Info("waited 5000")
 
 	if err := mergePDFs(pdfFiles, finalPDF); err != nil {
 		logger.Log.Error("archive.stream.merge_pdfs.failed",

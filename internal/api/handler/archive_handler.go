@@ -4,7 +4,6 @@ import (
 	"encoding/base64"
 	"fmt"
 	"io"
-	"log"
 	"net/http"
 	"os"
 	"os/exec"
@@ -296,8 +295,20 @@ func (h *ArchiveHandler) CreateArchive(c *gin.Context) {
 				return
 			}
 
-			uploadDir, err := createUploadDirectory(newArchive.ID)
+			storageLocation, err := utils.GetStorageLocation()
 			if err != nil {
+				logger.Log.Error("archive.create.get_storage_location.failed",
+					zap.String("request_id", requestID.(string)),
+					zap.Error(err),
+					zap.Duration("duration_ms", time.Since(start)),
+				)
+
+				response.Error(c, http.StatusInternalServerError, "Failed to get storage location directory")
+				return
+			}
+
+			uploadDir := filepath.Join(storageLocation, "uploads", "archives", strconv.Itoa(int(newArchive.ID)))
+			if err := os.MkdirAll(uploadDir, 0755); err != nil {
 				logger.Log.Error("archive.create.create_upload_directory.failed",
 					zap.String("request_id", requestID.(string)),
 					zap.Error(err),
@@ -310,7 +321,6 @@ func (h *ArchiveHandler) CreateArchive(c *gin.Context) {
 
 			fileName := fmt.Sprintf("%d_%d.%s", newArchive.ID, time.Now().UnixNano(), fileExt)
 			fileLocation := filepath.Join(uploadDir, fileName)
-
 			if err := os.WriteFile(fileLocation, decodedBytes, 0644); err != nil {
 				logger.Log.Error("archive.create.write_file.failed",
 					zap.String("request_id", requestID.(string)),
@@ -476,7 +486,7 @@ func (h *ArchiveHandler) UpdateArchiveById(c *gin.Context) {
 
 			decodedBytes, err := base64.StdEncoding.DecodeString(base64Data)
 			if err != nil {
-				logger.Log.Error("archive.create.base64_conversion.failed",
+				logger.Log.Error("archive.update.base64_conversion.failed",
 					zap.String("request_id", requestID.(string)),
 					zap.Error(err),
 					zap.Duration("duration_ms", time.Since(start)),
@@ -486,9 +496,21 @@ func (h *ArchiveHandler) UpdateArchiveById(c *gin.Context) {
 				return
 			}
 
-			uploadDir, err := createUploadDirectory(updateArchiveRequest.ID)
+			storageLocation, err := utils.GetStorageLocation()
 			if err != nil {
-				logger.Log.Error("archive.create.create_upload_directory.failed",
+				logger.Log.Error("archive.update.get_storage_location.failed",
+					zap.String("request_id", requestID.(string)),
+					zap.Error(err),
+					zap.Duration("duration_ms", time.Since(start)),
+				)
+
+				response.Error(c, http.StatusInternalServerError, "Failed to get storage location directory")
+				return
+			}
+
+			uploadDir := filepath.Join(storageLocation, "uploads", "archives", strconv.Itoa(int(updateArchiveRequest.ID)))
+			if err := os.MkdirAll(uploadDir, 0755); err != nil {
+				logger.Log.Error("archive.update.create_upload_directory.failed",
 					zap.String("request_id", requestID.(string)),
 					zap.Error(err),
 					zap.Duration("duration_ms", time.Since(start)),
@@ -500,7 +522,6 @@ func (h *ArchiveHandler) UpdateArchiveById(c *gin.Context) {
 
 			fileName := fmt.Sprintf("%d_%d.%s", updateArchiveRequest.ID, time.Now().UnixNano(), fileExt)
 			fileLocation := filepath.Join(uploadDir, fileName)
-
 			if err := os.WriteFile(fileLocation, decodedBytes, 0644); err != nil {
 				logger.Log.Error("archive.update.write_file.failed",
 					zap.String("request_id", requestID.(string)),
@@ -532,28 +553,26 @@ func (h *ArchiveHandler) UpdateArchiveById(c *gin.Context) {
 				return
 			}
 
-			projectRoot, err := utils.GetProjectRoot()
-			if err != nil {
-				logger.Log.Info("archive.stream.get_project_root.failed",
+			cacheFilePath := filepath.Join(storageLocation, "cache", "archives", strconv.Itoa(int(updateArchiveRequest.ID)), fmt.Sprintf("archive_%d.pdf", updateArchiveRequest.ID))
+			if err := os.Remove(cacheFilePath); err == nil {
+				logger.Log.Info("archive.update.create_process.delete_cached_data.success",
 					zap.String("request_id", requestID.(string)),
-					zap.String("param", c.Param("id")),
-					zap.Error(err),
+					zap.Any("payload", &cacheFilePath),
 					zap.Duration("duration_ms", time.Since(start)),
 				)
-
-				response.Error(c, http.StatusBadRequest, "Failed to get project root")
-				return
-			}
-
-			cacheFolder := "storage/cache"
-			cacheFilePath := filepath.Join(projectRoot, cacheFolder, fmt.Sprintf("archive_%d.pdf", updateArchiveRequest.ID))
-
-			if err := os.Remove(cacheFilePath); err == nil {
-				log.Println("Cache deleted:", cacheFilePath)
 			} else if os.IsNotExist(err) {
-				log.Println("No cache found:", cacheFilePath)
+				logger.Log.Info("archive.update.create_process.delete_cached_data.not_found",
+					zap.String("request_id", requestID.(string)),
+					zap.Any("payload", &cacheFilePath),
+					zap.Duration("duration_ms", time.Since(start)),
+				)
 			} else {
-				log.Println("Failed to delete cache:", err)
+				logger.Log.Error("archive.update.create_process.delete_cached_data.failed",
+					zap.String("request_id", requestID.(string)),
+					zap.Error(err),
+					zap.Any("payload", &cacheFilePath),
+					zap.Duration("duration_ms", time.Since(start)),
+				)
 			}
 		}
 
@@ -584,30 +603,38 @@ func (h *ArchiveHandler) UpdateArchiveById(c *gin.Context) {
 				return
 			}
 
-			c.JSON(http.StatusOK, archiveAttachment)
-
-			projectRoot, err := utils.GetProjectRoot()
+			storageLocation, err := utils.GetStorageLocation()
 			if err != nil {
-				logger.Log.Info("archive.stream.get_project_root.failed",
+				logger.Log.Error("archive.update.delete_process.get_storage_location.failed",
 					zap.String("request_id", requestID.(string)),
-					zap.String("param", c.Param("id")),
 					zap.Error(err),
 					zap.Duration("duration_ms", time.Since(start)),
 				)
 
-				response.Error(c, http.StatusBadRequest, "Failed to get project root")
+				response.Error(c, http.StatusInternalServerError, "Failed to get storage location directory")
 				return
 			}
 
-			cacheFolder := "storage/cache"
-			cacheFilePath := filepath.Join(projectRoot, cacheFolder, fmt.Sprintf("archive_%d.pdf", updateArchiveRequest.ID))
-
+			cacheFilePath := filepath.Join(storageLocation, "cache", "archives", strconv.Itoa(int(updateArchiveRequest.ID)), fmt.Sprintf("archive_%d.pdf", updateArchiveRequest.ID))
 			if err := os.Remove(cacheFilePath); err == nil {
-				log.Println("Cache deleted:", cacheFilePath)
+				logger.Log.Info("archive.update.delete_process.delete_cached_data.success",
+					zap.String("request_id", requestID.(string)),
+					zap.Any("payload", &cacheFilePath),
+					zap.Duration("duration_ms", time.Since(start)),
+				)
 			} else if os.IsNotExist(err) {
-				log.Println("No cache found:", cacheFilePath)
+				logger.Log.Info("archive.update.delete_process.delete_cached_data.not_found",
+					zap.String("request_id", requestID.(string)),
+					zap.Any("payload", &cacheFilePath),
+					zap.Duration("duration_ms", time.Since(start)),
+				)
 			} else {
-				log.Println("Failed to delete cache:", err)
+				logger.Log.Error("archive.update.delete_process.delete_cached_data.failed",
+					zap.String("request_id", requestID.(string)),
+					zap.Error(err),
+					zap.Any("payload", &cacheFilePath),
+					zap.Duration("duration_ms", time.Since(start)),
+				)
 			}
 		}
 	}
@@ -792,21 +819,19 @@ func (h *ArchiveHandler) StreamMergedPDF(c *gin.Context) {
 		return
 	}
 
-	projectRoot, err := utils.GetProjectRoot()
+	storageLocation, err := utils.GetStorageLocation()
 	if err != nil {
-		logger.Log.Info("archive.stream.get_project_root.failed",
+		logger.Log.Error("archive.stream.get_storage_location.failed",
 			zap.String("request_id", requestID.(string)),
-			zap.String("param", c.Param("id")),
 			zap.Error(err),
 			zap.Duration("duration_ms", time.Since(start)),
 		)
 
-		response.Error(c, http.StatusBadRequest, "Failed to get project root")
+		response.Error(c, http.StatusInternalServerError, "Failed to get storage location directory")
 		return
 	}
 
-	cacheDir := filepath.Join(projectRoot, "storage", "cache")
-
+	cacheDir := filepath.Join(storageLocation, "cache", "archives", strconv.Itoa(int(id)))
 	if err := os.MkdirAll(cacheDir, 0755); err != nil {
 		logger.Log.Error("archive.stream.create_cache_directory.failed",
 			zap.String("request_id", requestID.(string)),
@@ -817,7 +842,6 @@ func (h *ArchiveHandler) StreamMergedPDF(c *gin.Context) {
 	}
 
 	finalPDF := filepath.Join(cacheDir, fmt.Sprintf("archive_%d.pdf", id))
-
 	if stat, err := os.Stat(finalPDF); err == nil {
 		if time.Since(stat.ModTime()) < CacheTTL {
 			streamFileChunked(c, finalPDF, requestID, start)
@@ -880,7 +904,6 @@ func (h *ArchiveHandler) StreamMergedPDF(c *gin.Context) {
 		return
 	}
 
-	// Cleanup temp
 	if tempImagePDF != "" {
 		_ = os.Remove(tempImagePDF)
 	}
@@ -971,22 +994,6 @@ func streamFileChunked(c *gin.Context, filePath string, requestID any, start tim
 		zap.String("request_id", requestID.(string)),
 		zap.Duration("duration_ms", time.Since(start)),
 	)
-}
-
-func createUploadDirectory(archiveId uint) (string, error) {
-	projectRoot, err := utils.GetProjectRoot()
-	if err != nil {
-		return "", err
-	}
-
-	convertedArchiveId := strconv.Itoa(int(archiveId))
-	uploadDir := filepath.Join(projectRoot, "storage", "uploads", "archives", convertedArchiveId)
-
-	if err := os.MkdirAll(uploadDir, 0755); err != nil {
-		return "", err
-	}
-
-	return uploadDir, nil
 }
 
 func convertImagesToPDF(imageFiles []string, outputPDF string) error {

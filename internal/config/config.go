@@ -2,7 +2,6 @@ package config
 
 import (
 	"os"
-	"path/filepath"
 	"strconv"
 
 	"github.com/joho/godotenv"
@@ -34,20 +33,18 @@ type Config struct {
 }
 
 func Load() *Config {
-	root, err := utils.GetProjectRoot()
+	envFilePath, err := utils.GetEnvFilePath()
 	if err != nil {
-		logger.Log.Warn("config.project_root.not_found",
+		logger.Log.Error("config.env.get_env_file_path.failed",
 			zap.Error(err),
+			zap.String("message", "Failed to get .env file path"),
 		)
-
-		return nil
 	}
 
-	envPath := filepath.Join(root, "config", ".env")
-
-	if err := godotenv.Load(envPath); err != nil {
+	if err := godotenv.Load(envFilePath); err != nil {
 		logger.Log.Warn("config.env.load.failed",
-			zap.String("path", envPath),
+			zap.Error(err),
+			zap.String("path", envFilePath),
 			zap.String("message", "No .env file found, using system environment variables"),
 		)
 	}

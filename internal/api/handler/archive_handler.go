@@ -890,6 +890,24 @@ func (h *ArchiveHandler) StreamMergedPDF(c *gin.Context) {
 			zap.String("param", c.Param("id")),
 			zap.Duration("duration_ms", time.Since(start)),
 		)
+
+		return
+	}
+
+	for _, f := range pdfFiles {
+		info, err := os.Stat(f)
+		if err != nil {
+			logger.Log.Warn("pdfunite.input.stat_failed",
+				zap.String("file", f),
+				zap.Error(err),
+			)
+			continue
+		}
+
+		logger.Log.Info("pdfunite.input",
+			zap.String("file", f),
+			zap.Int64("size", info.Size()),
+		)
 	}
 
 	if err := mergePDFs(pdfFiles, finalPDF); err != nil {
@@ -1001,9 +1019,18 @@ func convertImagesToPDF(imageFiles []string, outputPDF string) error {
 		return nil
 	}
 
-	args := append(imageFiles, outputPDF)
-	cmd := exec.Command("magick", args...)
+	args := []string{
+		"-density", "300",
+	}
 
+	args = append(args, imageFiles...)
+	args = append(args,
+		"-quality", "100",
+		"-compress", "jpeg",
+		outputPDF,
+	)
+
+	cmd := exec.Command("magick", args...)
 	utils.ApplySysProcAttr(cmd)
 
 	out, err := cmd.CombinedOutput()
@@ -1015,7 +1042,7 @@ func convertImagesToPDF(imageFiles []string, outputPDF string) error {
 }
 
 func mergePDFs(inputs []string, output string) error {
-	if len(inputs) == 0 {
+	if len(inputs) < 1 {
 		return fmt.Errorf("no PDF files to merge")
 	}
 

@@ -49,26 +49,6 @@ func Load() *Config {
 		)
 	}
 
-	workingDir, err := os.Getwd()
-	if err != nil {
-		logger.Log.Error("config.env.get_storage_location.failed",
-			zap.Error(err),
-			zap.String("storage_location", workingDir),
-			zap.String("message", "Failed to get storage path"),
-		)
-	}
-	logger.Log.Info(workingDir)
-
-	storageLocation, err := utils.GetStorageLocation()
-	if err != nil {
-		logger.Log.Error("config.env.get_storage_location.failed",
-			zap.Error(err),
-			zap.String("storage_location", storageLocation),
-			zap.String("message", "Failed to get storage path"),
-		)
-	}
-	logger.Log.Info(storageLocation)
-
 	jwtExpStr := getEnv("JWT_EXPIRATION_MINUTES", "60")
 	jwtExp, err := strconv.Atoi(jwtExpStr)
 	if err != nil {

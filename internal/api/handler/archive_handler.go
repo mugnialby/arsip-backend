@@ -910,12 +910,18 @@ func (h *ArchiveHandler) StreamMergedPDF(c *gin.Context) {
 		)
 	}
 
-	// if err := waitForStableFile(pdfFiles, 3*time.Second); err != nil {
-	// 	return err
-	// }
+	for _, input := range pdfFiles {
+		if err := validatePDF(input); err != nil {
+			logger.Log.Error("archive.stream.merge_pdfs.failed",
+				zap.String("request_id", requestID.(string)),
+				zap.String("param", c.Param("id")),
+				zap.Error(err),
+				zap.Duration("duration_ms", time.Since(start)),
+			)
 
-	time.Sleep(5000 * time.Millisecond)
-	logger.Log.Info("waited 5000")
+			return
+		}
+	}
 
 	if err := mergePDFs(pdfFiles, finalPDF); err != nil {
 		logger.Log.Error("archive.stream.merge_pdfs.failed",
@@ -1062,25 +1068,30 @@ func mergePDFs(inputs []string, output string) error {
 	return nil
 }
 
-func waitForStableFile(path string, timeout time.Duration) error {
-	deadline := time.Now().Add(timeout)
-
-	var lastSize int64 = -1
-
-	for time.Now().Before(deadline) {
-		info, err := os.Stat(path)
-		if err != nil {
-			time.Sleep(50 * time.Millisecond)
-			continue
-		}
-
-		if info.Size() > 0 && info.Size() == lastSize {
-			return nil // file is stable
-		}
-
-		lastSize = info.Size()
-		time.Sleep(100 * time.Millisecond)
+func validatePDF(path string) error {
+	info, err := os.Stat(path)
+	if err != nil {
+		return fmt.Errorf("file not found: %s", path)
 	}
 
-	return fmt.Errorf("file not stable: %s", path)
+	if info.Size() == 0 {
+		return fmt.Errorf("file is empty: %s", path)
+	}
+
+	f, err := os.Open(path)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+
+	header := make([]byte, 5)
+	if _, err := f.Read(header); err != nil {
+		return err
+	}
+
+	if string(header) != "%PDF-" {
+		return fmt.Errorf("not a valid PDF: %s (header=%q)", path, header)
+	}
+
+	return nil
 }

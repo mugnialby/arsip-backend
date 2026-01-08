@@ -910,6 +910,12 @@ func (h *ArchiveHandler) StreamMergedPDF(c *gin.Context) {
 		)
 	}
 
+	// if err := waitForStableFile(pdfFiles, 3*time.Second); err != nil {
+	// 	return err
+	// }
+
+	time.Sleep(500 * time.Millisecond)
+
 	if err := mergePDFs(pdfFiles, finalPDF); err != nil {
 		logger.Log.Error("archive.stream.merge_pdfs.failed",
 			zap.String("request_id", requestID.(string)),
@@ -1019,18 +1025,9 @@ func convertImagesToPDF(imageFiles []string, outputPDF string) error {
 		return nil
 	}
 
-	args := []string{
-		"-density", "300",
-	}
-
-	args = append(args, imageFiles...)
-	args = append(args,
-		"-quality", "100",
-		"-compress", "jpeg",
-		outputPDF,
-	)
-
+	args := append(imageFiles, outputPDF)
 	cmd := exec.Command("magick", args...)
+
 	utils.ApplySysProcAttr(cmd)
 
 	out, err := cmd.CombinedOutput()
@@ -1042,7 +1039,7 @@ func convertImagesToPDF(imageFiles []string, outputPDF string) error {
 }
 
 func mergePDFs(inputs []string, output string) error {
-	if len(inputs) < 1 {
+	if len(inputs) == 0 {
 		return fmt.Errorf("no PDF files to merge")
 	}
 
@@ -1062,4 +1059,27 @@ func mergePDFs(inputs []string, output string) error {
 	}
 
 	return nil
+}
+
+func waitForStableFile(path string, timeout time.Duration) error {
+	deadline := time.Now().Add(timeout)
+
+	var lastSize int64 = -1
+
+	for time.Now().Before(deadline) {
+		info, err := os.Stat(path)
+		if err != nil {
+			time.Sleep(50 * time.Millisecond)
+			continue
+		}
+
+		if info.Size() > 0 && info.Size() == lastSize {
+			return nil // file is stable
+		}
+
+		lastSize = info.Size()
+		time.Sleep(100 * time.Millisecond)
+	}
+
+	return fmt.Errorf("file not stable: %s", path)
 }

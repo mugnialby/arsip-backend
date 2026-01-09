@@ -1032,7 +1032,7 @@ func convertImagesToPDF(imageFiles []string, outputPDF string) error {
 		return nil
 	}
 
-	args := append(imageFiles, outputPDF)
+	args := append(imageFiles, "pdf:", outputPDF)
 	cmd := exec.Command("magick", args...)
 
 	utils.ApplySysProcAttr(cmd)

@@ -25,7 +25,8 @@ RUN apk add --no-cache \
     imagemagick \
     poppler-utils \
     ca-certificates \
-    tzdata
+    tzdata \
+    ghostscript
 
 # Create non-root user
 RUN addgroup -S app && adduser -S app -G app

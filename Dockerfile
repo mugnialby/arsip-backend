@@ -38,7 +38,8 @@ COPY --from=builder /app/app /app/app
 
 # Writable data directory
 RUN mkdir -p /storage/uploads /storage/cache /storage/tmp \
-    && chown -R app:app /storage
+    && chown -R app:app /storage \
+    && chmod -R 755 /storage
 
 # Environment variables
 ENV TZ=Asia/Jakarta

@@ -26,7 +26,8 @@ RUN apk add --no-cache \
     poppler-utils \
     ca-certificates \
     tzdata \
-    ghostscript
+    ghostscript \
+    ghostscript-fonts
 
 # Create non-root user
 RUN addgroup -S app && adduser -S app -G app
